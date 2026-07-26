@@ -8,8 +8,8 @@
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/conifer-sae/"><img src="https://img.shields.io/pypi/v/conifer-sae" alt="PyPI version"></a>
-  <img src="https://img.shields.io/pypi/pyversions/conifer-sae" alt="Python versions">
+  <a href="https://pypi.org/project/conifer-sae/"><img src="https://img.shields.io/badge/pypi-v0.1.1-orange" alt="PyPI"></a>
+  <img src="https://img.shields.io/badge/python-3.9--3.12-blue" alt="Python 3.9-3.12">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2D6A4F.svg" alt="License: MIT"></a>
   <a href="https://github.com/IFC-UIDAHO/conifer/actions/workflows/tests.yml"><img src="https://github.com/IFC-UIDAHO/conifer/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
   <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black"></a>
