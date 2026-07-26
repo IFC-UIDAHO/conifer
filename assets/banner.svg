@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2560" height="640" viewBox="0 0 2560 640">
+  <rect width="2560" height="640" fill="#F4F2EA"/>
+  <!-- faint watermark tree (contour) -->
+  <g opacity="0.06" transform="translate(1740,-40) scale(7.2)" fill="none" stroke="#2D6A4F" stroke-width="7" stroke-linecap="square">
+    <path d="M14 100 L60 58 L106 100"/><path d="M22 78 L60 43 L98 78"/>
+    <path d="M30 56 L60 28 L90 56"/><path d="M40 36 L60 18 L80 36"/>
+  </g>
+  <!-- left contour mark -->
+  <g transform="translate(180,150) scale(2.7)" fill="none" stroke-linecap="square" stroke-width="7">
+    <path d="M14 100 L60 58 L106 100" stroke="#2D6A4F"/>
+    <path d="M22 78 L60 43 L98 78" stroke="#3E8C68"/>
+    <path d="M30 56 L60 28 L90 56" stroke="#52B788"/>
+    <path d="M40 36 L60 18 L80 36" stroke="#C77D3A"/>
+    <line x1="16" y1="110" x2="104" y2="110" stroke="#2D6A4F" stroke-width="6" stroke-dasharray="7 8"/>
+  </g>
+  <!-- wordmark -->
+  <text x="600" y="352" font-family="DejaVu Sans Mono, monospace" font-weight="bold" font-size="178" fill="#15281C" letter-spacing="2">conifer</text>
+  <!-- subtitle -->
+  <text x="606" y="424" font-family="DejaVu Sans, sans-serif" font-size="36" fill="#5A6A5F">Small area estimation for forest inventory.</text>
+  <text x="606" y="470" font-family="DejaVu Sans, sans-serif" font-size="36" fill="#5A6A5F">Fay–Herriot with nonlinear debiasing and ellipsoidal conformal regions.</text>
+  <!-- install pill -->
+  <rect x="606" y="516" width="476" height="62" rx="8" fill="#15281C"/>
+  <text x="632" y="557" font-family="DejaVu Sans Mono, monospace" font-size="30" fill="#F4F2EA">pip install conifer-sae</text>
+  <text x="1112" y="557" font-family="DejaVu Sans Mono, monospace" font-size="28" fill="#7D8A80">docs · github · pypi</text>
+</svg>

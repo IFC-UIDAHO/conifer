@@ -12,6 +12,7 @@ push.sh
 # assets: keep only the contour marks the README/docs use; drop mockups & design sources
 assets/*
 !assets/banner.png
+!assets/banner.svg
 !assets/logo.svg
 !assets/icon.svg
 !assets/favicon.svg
