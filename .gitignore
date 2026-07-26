@@ -1,0 +1,17 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+*.pyc
+push.bat
+push.sh
+.venv/
+*.egg
+
+# assets: keep only the contour marks the README/docs use; drop mockups & design sources
+assets/*
+!assets/banner.png
+!assets/logo.svg
+!assets/icon.svg
+!assets/favicon.svg

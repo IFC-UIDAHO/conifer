@@ -1,0 +1,3 @@
+Vendored copy of the validated PSAE engine (originally `mvml_sae`) as CONIFER's internal core.
+Source of record: PSAE_work/idaho_analysis/scripts/mvml_sae/  (and the canonical ML_Mutivariate_SAE/code copy).
+Do not edit here except mechanical rename/aliasing; fixes flow from the source of record.

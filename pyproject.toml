@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "conifer-sae"
+version = "0.1.0"
+description = "Compositional, design-aware small-area estimation of forest diameter distributions with conformal prediction sets."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Jaslam Poolakkal", email = "mjaslam@uidaho.edu" }]
+keywords = ["small area estimation", "Fay-Herriot", "forestry", "diameter distribution", "compositional data", "conformal prediction", "FIA", "LiDAR", "NAIP"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = ["numpy>=1.22", "scipy>=1.8", "scikit-learn>=1.1", "pandas>=1.4", "matplotlib>=3.5"]
+
+[project.optional-dependencies]
+bart = ["xgboost>=1.6"]
+test = ["pytest>=7.0"]
+
+[project.scripts]
+conifer = "conifer.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/IFC-UIDAHO/conifer"
+Documentation = "https://github.com/IFC-UIDAHO/conifer#readme"
+Issues = "https://github.com/IFC-UIDAHO/conifer/issues"
+Repository = "https://github.com/IFC-UIDAHO/conifer"
+
+[tool.hatch.build.targets.wheel]
+packages = ["conifer"]
