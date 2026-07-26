@@ -16,3 +16,6 @@ assets/*
 !assets/logo.svg
 !assets/icon.svg
 !assets/favicon.svg
+release.bat
+release.sh
+RELEASE_NOTES_*.md
