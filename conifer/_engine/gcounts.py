@@ -53,7 +53,7 @@ def alr_shares_and_Di(counts, phi=None, ref=-1, alpha=0.5):
     y = (np.log(p) - np.log(p[:, [ref]]))[:, keep]       # ALR
     q = K - 1; D = np.empty((m, q, q))
     for i in range(m):
-        ni = max(float(n[i]),1.0); kappa = (ni + phi) / (ni * (1.0 + phi))   # DM inflation
+        ni = max(float(n[i, 0]),1.0); kappa = (ni + phi) / (ni * (1.0 + phi))   # DM inflation
         pi = p[i]; Cov_p = kappa * (np.diag(pi) - np.outer(pi, pi))
         # Jacobian of ALR wrt p: dy_j/dp_l = [l==j]/p_j - [l==ref]/p_ref
         J = np.zeros((q, K))
