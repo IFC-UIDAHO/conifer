@@ -22,5 +22,5 @@ SpeciesComposition   : planned v0.3 sibling, on the same engine.
 """
 from .estimators import DiameterDistribution, CompositionalFH, SpeciesComposition
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 __all__ = ["DiameterDistribution", "CompositionalFH", "SpeciesComposition", "__version__"]

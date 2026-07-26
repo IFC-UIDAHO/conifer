@@ -6,6 +6,16 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-07-26
+
+### Changed
+- Switched the PyPI / Python README badges to static badges so the project page never shows a
+  transient "package or version not found" during PyPI/shields cache propagation.
+- Added per-version Python classifiers (3.9-3.12).
+
+### Fixed
+- Test no longer pins an exact version string (was breaking CI on version bumps).
+
 ## [0.1.1] - 2026-07-26
 
 ### Fixed
