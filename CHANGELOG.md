@@ -6,6 +6,12 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-26
+
+### Fixed
+- README banner now uses an absolute image URL so it renders on the PyPI project page
+  (relative paths only resolve on GitHub, not on PyPI).
+
 ## [0.1.0] - 2026-07-26
 
 Initial public release.
