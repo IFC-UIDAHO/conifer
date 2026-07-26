@@ -5,7 +5,7 @@ import conifer
 
 
 def test_version_and_names():
-    assert conifer.__version__ == "0.1.0"
+    assert isinstance(conifer.__version__, str) and conifer.__version__[0].isdigit()  # a version string, not a pinned release
     # the engine and the estimator are one object today, exposed under two names
     assert conifer.CompositionalFH is conifer.DiameterDistribution
 
