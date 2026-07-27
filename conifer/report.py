@@ -175,8 +175,16 @@ def summary_table(est, *, joint=False, alpha=0.10, round_to=1) -> pd.DataFrame:
     if lo is not None:
         out[f"total {M['dens']} low"] = lo.sum(1)
         out[f"total {M['dens']} high"] = hi.sum(1)
-        rel = (hi.sum(1) - lo.sum(1)) / np.clip(total, 1e-9, None)
-        out["interval width (% of estimate)"] = 100 * rel
+        # Absolute width first, and the relative figure computed on the classes the stand
+        # actually tallied. A relative width that includes the untallied classes divides by a
+        # near-zero estimate and reads enormous - a property of the denominator, not of the
+        # interval a forester acts on.
+        out[f"interval width ({M['dens']})"] = hi.sum(1) - lo.sum(1)
+        inv_ = getattr(est, "inventory_", None)
+        popm = (inv_.counts > 0) if inv_ is not None else np.ones_like(s, bool)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            relp = np.where(popm, (hi - lo) / np.clip(s, 1e-9, None), np.nan)
+        out["width on tallied classes (% of estimate)"] = 100 * np.nanmean(relp, axis=1)
 
     inv = getattr(est, "inventory_", None)
     if inv is not None:
@@ -315,12 +323,21 @@ def narrative(est, *, coverage=None, calibration=None, alpha=0.10, joint=False) 
                  f"a stronger claim, and correspondingly a wider one. It spans on average "
                  f"**±{rel.mean()/2:.0f}% of the estimate** for total {dens}. ")
         else:
+            inv_ = getattr(est, "inventory_", None)
+            popm = (inv_.counts > 0) if inv_ is not None else np.ones_like(s, bool)
+            with np.errstate(invalid="ignore", divide="ignore"):
+                relp = np.where(popm, (hi - lo) / np.clip(s, 1e-9, None), np.nan)
+            wp = float(np.nanmean(relp)) * 100
+            tail_abs = float(np.mean((hi - lo)[~popm])) if (~popm).any() else 0.0
             p = (f"Each class carries its own **{lvl}% interval**: for any single diameter "
                  f"class you name, the interval shown contains that stand's true density "
-                 f"{lvl}% of the time. It spans on average **±{rel.mean()/2:.0f}% of the "
-                 f"estimate** (median ±{np.median(rel)/2:.0f}%). Note this is a per-class "
-                 f"guarantee, not a promise about all {K} classes simultaneously — for that, "
-                 f"ask for the joint set, which is wider. ")
+                 f"{lvl}% of the time. On the classes a stand actually tallied it spans "
+                 f"**±{wp/2:.0f}% of the estimate**. For classes where nothing was tallied the "
+                 f"interval runs from zero up to about **{tail_abs:.1f} {dens}** — small in "
+                 f"absolute terms, but large as a percentage precisely because the estimate it "
+                 f"is measured against is near zero, so read those in {dens} and not in "
+                 f"percent. This is a per-class guarantee, not a promise about all {K} classes "
+                 f"at once; for that, ask for the joint set, which is wider. ")
         if kind:
             p += f"Calibration method: {kind}. "
         paras.append(p.strip())
