@@ -26,8 +26,8 @@ from conifer import report as crep
 st.set_page_config(
     page_title="CONIFER — Stand Structure Studio",
     page_icon="🌲", layout="wide", initial_sidebar_state="expanded",
-    menu_items={"about": "CONIFER — small-area estimation for forest inventory. "
-                         "Fay–Herriot with nonlinear debiasing and conformal prediction sets."},
+    menu_items={"about": "CONIFER — COmpositional Nonlinear-debiased Inference, Fay–Herriot with "
+                         "Ellipsoidal conformal Regions. Robust · Compositional · Confident."},
 )
 
 ACCENT = "#2D6A4F"
@@ -49,7 +49,7 @@ st.markdown("""<style>
 
 :root{
   --bg:#FAFAF9; --surface:#FFFFFF; --surface-2:#FBFBFA;
-  --ink:#18181B; --ink-2:#52525B; --muted:#8B8B93;
+  --ink:#18181B; --ink-2:#52525B; --muted:#6B6B73;
   --hairline:#ECECEA; --ring:0 0 0 1px rgba(24,24,27,.07);
   --accent:#2D6A4F; --accent-600:#245A42; --accent-tint:#EAF3EC;
   --r:8px; --r-lg:12px;
@@ -95,6 +95,7 @@ input,textarea,[role="combobox"],[data-baseweb="select"] *{color:var(--ink)!impo
 .stButton>button[kind="primary"]{background:var(--accent);border:1px solid var(--accent);color:#fff!important;
   font-weight:600;box-shadow:0 1px 2px rgba(45,106,79,.28)}
 .stButton>button[kind="primary"]:hover{background:var(--accent-600);border-color:var(--accent-600)}
+.stButton>button p,.stButton>button div,.stDownloadButton>button p,.stDownloadButton>button div{color:inherit!important}
 .stButton>button:focus-visible,.stDownloadButton>button:focus-visible{outline:none;box-shadow:0 0 0 2px var(--bg),0 0 0 4px rgba(45,106,79,.4)}
 
 /* tabs — quiet underline */
@@ -114,8 +115,8 @@ input,textarea,[role="combobox"],[data-baseweb="select"] *{color:var(--ink)!impo
 
 /* top bar (app shell) */
 .cf-top{display:flex;align-items:center;gap:12px;padding:2px 2px 14px;margin-bottom:4px;border-bottom:1px solid var(--hairline)}
-.cf-top .mk{width:28px;height:28px;display:grid;place-items:center;background:var(--accent);border-radius:8px;flex:0 0 auto}
-.cf-top .mk svg{width:17px;height:17px}
+.cf-top .mk{width:30px;height:30px;display:grid;place-items:center;background:transparent;flex:0 0 auto}
+.cf-top .mk svg{width:30px;height:30px}
 .cf-wm{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:17px;color:var(--ink);letter-spacing:-.5px}
 .cf-sub{color:var(--muted);font-size:12.5px;border-left:1px solid var(--hairline);padding-left:12px}
 .cf-sp{margin-left:auto}
@@ -153,6 +154,11 @@ input,textarea,[role="combobox"],[data-baseweb="select"] *{color:var(--ink)!impo
 .cf-feat h4{margin:8px 0 6px;font-size:14.5px}
 .cf-feat p{color:var(--muted);font-size:13px;line-height:1.55;margin:0}
 .plain p{font-size:15px;line-height:1.7;color:var(--ink-2)}
+.cf-kicker{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.cf-mono{font-family:'JetBrains Mono',monospace;color:var(--ink);font-weight:700;letter-spacing:-.5px}
+[data-testid="stFileUploaderDropzoneInstructions"]{display:none!important}
+[data-testid="stFileUploaderDropzone"]{padding:8px 10px!important;min-height:0!important}
+[data-testid="stFileUploaderDropzone"]>button,[data-testid="stFileUploaderDropzone"] button{margin:0!important;width:100%}
 </style>""", unsafe_allow_html=True)
 
 
@@ -160,18 +166,23 @@ input,textarea,[role="combobox"],[data-baseweb="select"] *{color:var(--ink)!impo
 # small helpers
 # ---------------------------------------------------------------------------
 _MARK = ('<svg viewBox="0 0 120 120" fill="none" stroke-linecap="square">'
-         '<path d="M18 96 L60 60 L102 96" stroke="#fff" stroke-width="9"/>'
-         '<path d="M30 68 L60 42 L90 68" stroke="#fff" stroke-width="9"/>'
-         '<path d="M42 42 L60 26 L78 42" stroke="#fff" stroke-width="9"/></svg>')
+         '<path d="M14 100 L60 58 L106 100" stroke="#2D6A4F" stroke-width="8"/>'
+         '<path d="M22 78 L60 43 L98 78" stroke="#3E8C68" stroke-width="8"/>'
+         '<path d="M30 56 L60 28 L90 56" stroke="#52B788" stroke-width="8"/>'
+         '<path d="M40 36 L60 18 L80 36" stroke="#C77D3A" stroke-width="8"/></svg>')
+
+_DOT = {"idle": "#B4B4BB", "ready": "#C77D3A", "ok": "#2D6A4F"}
 
 
-def topbar(status):
-    st.markdown(
+def render_top(text, tone="idle"):
+    top_slot.markdown(
         f"<div class='cf-top'><span class='mk'>{_MARK}</span>"
         f"<span class='cf-wm'>conifer</span>"
         f"<span class='cf-sub'>Stand Structure Studio</span>"
         f"<span class='cf-sp'></span>"
-        f"<span class='cf-pill'><span class='cf-dot'></span>{status}</span></div>",
+        f"<span class='cf-pill'>v{conifer.__version__}</span>"
+        f"<span class='cf-pill' style='margin-left:8px'><span class='cf-dot' style='background:{_DOT.get(tone)}'></span>"
+        f"{text}</span></div>",
         unsafe_allow_html=True)
 
 
@@ -264,8 +275,7 @@ def load_demo():
 # ---------------------------------------------------------------------------
 # top bar
 # ---------------------------------------------------------------------------
-_status = "no data yet" if S.trees is None else ("fitted" if S.fitted is not None else "ready to run")
-topbar(_status)
+top_slot = st.empty()
 
 
 # ---------------------------------------------------------------------------
@@ -279,9 +289,16 @@ with st.sidebar:
                       "data before you point it at your own."):
         load_demo()
         st.rerun()
-    up_trees = st.file_uploader("Tree list — one row per tallied tree", type=["csv", "xlsx", "xls"])
-    up_aux = st.file_uploader("Stand metrics — one row per stand", type=["csv", "xlsx", "xls"])
-    up_geo = st.file_uploader("Stand polygons — optional", type=["gpkg", "geojson", "json", "zip"])
+    up_trees = st.file_uploader("Tree list — one row per tallied tree", type=["csv", "xlsx", "xls"],
+                                help="One row per tallied tree: stand id, DBH, and ideally a plot id.")
+    st.caption("CSV, XLSX or XLS")
+    up_aux = st.file_uploader("Stand metrics — one row per stand", type=["csv", "xlsx", "xls"],
+                              help="LiDAR or spectral summaries per stand — what the model borrows strength from.")
+    st.caption("CSV, XLSX or XLS")
+    up_geo = st.file_uploader("Stand polygons — optional", type=["gpkg", "geojson", "json", "zip"],
+                              help="Only used to draw maps and export a GeoPackage to QGIS/ArcGIS. Every "
+                                   "table, chart and interval is computed without geometry.")
+    st.caption("GeoPackage, GeoJSON or zipped SHP — only for maps + GIS export")
 
     if up_trees is not None:
         S.trees = _read_table(up_trees)
@@ -303,11 +320,14 @@ trees, aux = S.trees, S.aux
 # empty state — onboarding
 # ---------------------------------------------------------------------------
 if trees is None:
+    render_top("No data loaded", "idle")
     st.markdown(
-        "<div class='cf-empty'><h1>Diameter distributions that hold up.</h1>"
-        "<p>Small-area estimation for forest inventory — Fay–Herriot with nonlinear debiasing "
-        "and conformal prediction sets. Load the demo cruise to walk the whole workflow on "
-        "realistic data; nothing leaves this machine.</p></div>",
+        "<div class='cf-empty'>"
+        "<div class='cf-kicker'>Robust · Compositional · Confident</div>"
+        "<h1>Diameter distributions that hold up.</h1>"
+        "<p><span class='cf-mono'>CONIFER</span> — COmpositional Nonlinear-debiased Inference, "
+        "Fay–Herriot with Ellipsoidal conformal Regions. Load the demo cruise to walk the whole "
+        "workflow on realistic data; nothing leaves this machine.</p></div>",
         unsafe_allow_html=True)
     _l, _c, _r = st.columns([1, 1.1, 1])
     with _c:
@@ -337,6 +357,7 @@ if trees is None:
 # ---------------------------------------------------------------------------
 # config rail — model setup
 # ---------------------------------------------------------------------------
+render_top("Ready to run", "ready")
 tc = list(trees.columns)
 with st.sidebar:
     sec("Columns")
@@ -442,16 +463,20 @@ if errs:
 
 if run or S.fitted is not None:
     if run or S.fitted is None:
+        import warnings as _warnings
         try:
-            with st.spinner("Fitting the small-area model…"):
-                est = inv.fit()
-            with st.spinner("Calibrating prediction sets (no known truth needed)…"):
-                cal = conifer.conformalize_holdout(est, alpha=alpha, joint=joint, mode=mode, reps=4)
-            with st.spinner("Checking whether those intervals actually hold up…"):
-                try:
-                    cov = conifer.coverage_check(est, alpha=alpha, joint=joint, mode=mode, reps=8)
-                except Exception:
-                    cov = None
+            with _warnings.catch_warnings(record=True) as _wlist:
+                _warnings.simplefilter("always")
+                with st.spinner("Fitting the small-area model…"):
+                    est = inv.fit()
+                with st.spinner("Calibrating prediction sets (no known truth needed)…"):
+                    cal = conifer.conformalize_holdout(est, alpha=alpha, joint=joint, mode=mode, reps=4)
+                with st.spinner("Checking whether those intervals actually hold up…"):
+                    try:
+                        cov = conifer.coverage_check(est, alpha=alpha, joint=joint, mode=mode, reps=8)
+                    except Exception:
+                        cov = None
+            S.warns = [str(w.message) for w in _wlist]
             S.fitted = (est, cal, cov, alpha, mode, joint)
         except Exception as e:
             st.error("**The fit failed.**\n\n```\n" + "".join(
@@ -461,11 +486,32 @@ if run or S.fitted is not None:
             st.stop()
 
     est, cal, cov, alpha, mode, joint = S.fitted
+    warns = S.get("warns", [])
     M = crep._meta(est)
     s = np.asarray(est.s_hat_, float)
+    render_top(f"Fitted · {s.shape[0]:,} stands", "ok")
     qmd = crep.quadratic_mean_diameter(s, M["midpoints"])
     ba = crep.basal_area(s, M["midpoints"], M["dbh_units"])
     ba_units = "ft²/ac" if M["dbh_units"] == "in" else "m²/ha"
+
+    # Surface what the library warns about; these go to the server console otherwise and the
+    # forester in the browser never sees the naive fallback that under-covers.
+    if isinstance(cal, dict) and cal.get("method") == "naive":
+        st.error(
+            "**These intervals under-cover — do not quote them at the stated level.** Calibration fell "
+            "back to a method known to produce prediction sets that are too narrow, so the true coverage "
+            "is materially below the level shown. The usual cause is a missing plot / point ID column — "
+            "set one in the **Columns** panel — but it can also happen when too few stands have repeat "
+            "plots to hold out on.")
+    for _w in warns:
+        st.warning(_w)
+
+    if dsg == "prism":
+        st.info(
+            "**Prism cruise:** expect the smallest-diameter class to sit **below** the field-only "
+            "estimate — that is the method working, not a miss. A prism tallies small trees with a very "
+            "large per-tree expansion, so the field-only small-class estimate is high-variance and "
+            "inflated, and CONIFER shrinks it toward what comparable stands support.")
 
     rhead("At a glance", "Headline numbers across every stand in the run.")
     items = [
@@ -621,7 +667,7 @@ if run or S.fitted is not None:
             import tempfile, os
             tmp = os.path.join(tempfile.mkdtemp(), "report.html")
             crep.to_html(est, tmp, title="Forest Structure Report",
-                         subtitle=f"{s.shape[0]} stands · CONIFER small-area estimate",
+                         subtitle=f"{s.shape[0]} stands · CONIFER v{conifer.__version__} small-area estimate",
                          alpha=alpha, joint=joint, coverage=cov, calibration=cal, figures=figs)
             _dl("Download stand_report.html", open(tmp, "rb").read(), "stand_report.html", "text/html")
 
