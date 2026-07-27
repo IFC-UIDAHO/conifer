@@ -249,9 +249,11 @@ with the citation once it is available. Until then, cite the software:
 
 ## Funding
 
-This work was supported by the NCASI Foundation on a certain project funded by the USDA Forest
-Service, Rocky Mountain Research Station, through the
-[Partnership for Small Area Estimation](https://www.ncasifoundation.org/projects/partnership-for-small-area-estimation/).
+Supported by the NCASI Foundation through the
+[Partnership for Small Area Estimation](https://www.ncasifoundation.org/projects/partnership-for-small-area-estimation/),
+under *Robust small-area estimation strategies for developing accurate stand-level diameter
+distributions* (PI: Jaslam Poolakkal, University of Idaho), funded by the USDA Forest Service,
+Rocky Mountain Research Station.
 
 ## License
 
