@@ -497,7 +497,7 @@ def coverage_check(est, *, inventory=None, alpha=0.10, joint=False, mode="maxsco
 # The hybrid interval
 # ---------------------------------------------------------------------------
 def calibrated_intervals(est, *, inventory=None, alpha=0.10, B=12, reps=2, seed=0,
-                         min_plots=2, verbose=False):
+                         min_plots=2, margin=0.5, verbose=False):
     """Prediction intervals that treat tallied and untallied classes as different problems.
 
     Three pieces, each measured rather than assumed:
@@ -517,6 +517,28 @@ def calibrated_intervals(est, *, inventory=None, alpha=0.10, B=12, reps=2, seed=
        boundary whatever its sd, so the bound is calibrated within the untallied stratum
        itself and paired with the physical zero floor.
 
+    ``margin`` deliberately lands the interval **slightly conservative** rather than on the
+    nominal level: the per-class factor is calibrated at the ``1 - alpha*margin`` quantile
+    instead of ``1 - alpha``. A factor tuned to hit nominal exactly on the population in front
+    of you is the transfer trap in another costume - it will not hold on the next region - and
+    for a forester-facing tool the asymmetry runs one way: a slightly wide interval costs
+    credibility, a narrow one costs trust. ``margin=1.0`` disables the cushion.
+
+    The cushion is not free, and the price is worth knowing. Measured on the realistic demo
+    at a nominal 90%, design-based covariance:
+
+    ========  ========  ===========  ===========  =====
+    margin    overall   populated    zero-tally   width
+    ========  ========  ===========  ===========  =====
+    1.00      0.866     0.937        0.806        4.2x
+    0.50      0.946     0.969        0.927        12.4x
+    0.35      0.966     0.976        0.958        20.5x
+    ========  ========  ===========  ===========  =====
+
+    The default of ``0.5`` buys validity on every stratum at roughly three times the width.
+    Most of that cost falls on the untallied stratum, where the width is measured relative to
+    a near-zero estimate and so reads far larger than it is in absolute stems per acre.
+
     Returns ``(lo, hi)``; attaches a :class:`CalibrationReport` to ``est.interval_report_``.
 
     Needs plot identifiers. Costs ``reps + 1`` bootstrap runs plus ``reps`` refits.
@@ -528,12 +550,19 @@ def calibrated_intervals(est, *, inventory=None, alpha=0.10, B=12, reps=2, seed=
         raise ValueError("calibrated_intervals needs plot identifiers; rebuild the inventory "
                          "with from_treelist(..., plot_col=...).")
     z = float(norm.ppf(1 - alpha / 2))
+    q_cal = 1.0 - alpha * float(np.clip(margin, 0.05, 1.0))
     cfg = _fit_kwargs(est)
     m, K = est.s_hat_.shape
     pa = getattr(inv, "plot_area", 0.1) or 0.1
 
+    # Match the bootstrap to the estimator actually being reported: if the fit used a
+    # design-based sampling covariance, the replicates must recompute one too, or the
+    # bootstrap measures a different estimator and any factor calibrated on top of it
+    # absorbs that mismatch rather than a property of the data.
+    use_design = inv.D_ext is not None
     sd_full = np.sqrt(np.clip(
-        est.bootstrap_mse(inv.area_eff, inv.X, groups=inv.groups, B=B, plot_ac=pa), 1e-12, None))
+        est.bootstrap_mse(inv.area_eff, inv.X, groups=inv.groups, B=B, plot_ac=pa,
+                          design_D=use_design), 1e-12, None))
     pop = inv.counts > 0
 
     c_reps, tail_reps = [], []
@@ -543,7 +572,8 @@ def calibrated_intervals(est, *, inventory=None, alpha=0.10, B=12, reps=2, seed=
             break
         est_a = a.fit(seed=getattr(est, "seed", 0), **cfg)
         sd_a = np.sqrt(np.clip(
-            est_a.bootstrap_mse(a.area_eff, a.X, groups=a.groups, B=B, plot_ac=pa), 1e-12, None))
+            est_a.bootstrap_mse(a.area_eff, a.X, groups=a.groups, B=B, plot_ac=pa,
+                                design_D=a.D_ext is not None), 1e-12, None))
         resid = np.abs(est_a.s_hat_ - b.direct)
         popA = a.counts > 0
         keep = np.zeros(m, bool)
@@ -554,10 +584,10 @@ def calibrated_intervals(est, *, inventory=None, alpha=0.10, B=12, reps=2, seed=
             sel = popA[:, k] & keep
             if sel.sum() >= 8:
                 ratio = resid[sel, k] / np.clip(z * sd_a[sel, k], 1e-12, None)
-                ck[k] = float(np.quantile(ratio, 1 - alpha))
+                ck[k] = float(np.quantile(ratio, q_cal))
             sel0 = (~popA[:, k]) & keep
             if sel0.sum() >= 8:
-                tk[k] = float(np.quantile(resid[sel0, k], 1 - alpha))
+                tk[k] = float(np.quantile(resid[sel0, k], q_cal))
         c_reps.append(ck)
         tail_reps.append(tk)
         if verbose:
@@ -576,13 +606,15 @@ def calibrated_intervals(est, *, inventory=None, alpha=0.10, B=12, reps=2, seed=
     est.interval_report_ = CalibrationReport(
         summary=("%d%% intervals: a bootstrap-MSE Gaussian on the classes this stand actually "
                  "tallied, inflated per class by %s as calibrated from your own plot data; a "
-                 "stratified bound and a zero floor on classes with no tally."
+                 "stratified bound and a zero floor on classes with no tally. Calibrated to "
+                 "sit slightly wide of the stated level rather than exactly on it, because a "
+                 "factor tuned to hit nominal on one forest does not transfer to the next."
                  % (int((1 - alpha) * 100), np.round(c, 2).tolist())),
         method="hybrid-bootstrap-stratified",
         alpha=alpha, nominal=1 - alpha,
         inflation_per_class=c.tolist(),
         tail_radius_per_class=tail.tolist(),
-        reps=len(c_reps), B=B,
+        reps=len(c_reps), B=B, design_D=bool(use_design), margin=float(margin),
         populated_fraction=float(pop.mean()),
     )
     return lo, hi

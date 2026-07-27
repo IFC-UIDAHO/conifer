@@ -276,6 +276,13 @@ class Inventory:
         if self.design == "fixed":
             counts = tally
             area_eff = nz * self.plot_area
+            # Inherit the parent's covariance choice. If the parent used a design-based D and
+            # the halves silently fell back to the analytic one, every calibration computed
+            # from a split would be measuring a different estimator than the one reported -
+            # the same mismatch that made bootstrap_mse need a design_D flag.
+            if self.D_ext is not None and ps.size:
+                from ._engine.sampling_cov import design_Di_from_plots
+                D_ext = design_Di_from_plots(ps, spa, m, K)
         else:
             dens = wsum / nz[:, None]
             tot = tally.sum(1)

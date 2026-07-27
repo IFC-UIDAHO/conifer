@@ -86,6 +86,7 @@ class DiameterDistribution:
     def __init__(self, n_ensemble=6, n_hidden=64, ridge=5.0, kfold=5, hurdle=True,
                  boot_g3=120, seed=0, mean_mode='ml', crossfit=True, sigma_mode='gl',
                  regime_adaptive=False, adequacy_n0=25.0, blend_mode='gate', sure_floor=0.35, di_correction=True, basis='alr', cf_reps=1, mse_mode='plug', debias=False, di_overdispersion=False):
+        self._init_kwargs={k:v for k,v in locals().items() if k!='self'}   # full config, for faithful bootstrap refits (no stale hardcoded subset)
         self.E=n_ensemble; self.H=n_hidden; self.lam=ridge; self.K_=kfold
         self.hurdle=hurdle; self.boot=boot_g3; self.seed=seed
         self.mean_mode=mean_mode; self.crossfit=crossfit; self.sigma_mode=sigma_mode
@@ -348,6 +349,9 @@ class DiameterDistribution:
         self.groups_=np.array(groups) if groups is not None else np.zeros(m,int)
         self._cscore=np.array([np.linalg.norm(_inv_sqrt(Su+D[i])@(y[i]-m_oof[i])) for i in range(m)])
         self._y=y; self._D=D
+        # per-stand EBLUP data-gain gamma = mean over ALR coords of Su/(Su+D_i): "% of the estimate from this
+        # stand's own plots". Rises with plot effort ONLY when D is design-based (D_ext); ~flat under analytic D.
+        self.data_gain_=np.array([float(np.mean(np.diag(Su)/(np.diag(Su)+np.diag(D[i])+1e-12))) for i in range(m)])
         return self
 
     def class_intervals(self, z=1.645):
@@ -492,27 +496,40 @@ class DiameterDistribution:
         if not hasattr(self,'conf_fac_'): raise RuntimeError("call conformalize() first")
         return self.class_intervals_conformal()
 
-    def bootstrap_mse(self, area_eff, X, groups=None, B=20, double=False, plot_ac=0.1):
+    def bootstrap_mse(self, area_eff, X, groups=None, B=20, double=False, plot_ac=0.1, design_D=False):
         """Parametric bootstrap MSE refitting the model each replicate (Hall & Maiti 2006 JRSS-B;
         Gonzalez-Manteiga 2008 multivariate FH). Always non-negative. double=True -> double-bootstrap
-        bias correction (second-order-unbiased). Returns (m,K) MSE."""
-        m,K=self.s_hat_.shape; s_true=self.s_hat_.copy(); area=np.asarray(area_eff,float); cls=type(self)
-        cfg=dict(n_ensemble=self.E,n_hidden=self.H,ridge=self.lam,kfold=self.K_,hurdle=self.hurdle,
-                 boot_g3=min(self.boot,20),mean_mode=self.mean_mode,crossfit=self.crossfit,
-                 sigma_mode=self.sigma_mode,regime_adaptive=self.regime_adaptive,blend_mode=self.blend_mode,basis=self.basis)
-        def gen(st,seed):
-            r=np.random.default_rng(seed); cb=np.zeros((m,K))
+        bias correction (unstable on degenerate compositions -> prefer single). design_D=True recomputes a
+        design-based D_ext from the bootstrap plot replicates in each refit, so the bootstrap measures the SAME
+        estimator you report when the outer fit used a design-based covariance (pass design_D=True whenever the
+        reported fit was given D_ext). The refit config is copied from the constructor by introspection, so every
+        kwarg (incl. di_overdispersion) propagates -- no stale hardcoded subset. Returns (m,K) MSE."""
+        m,K=self.s_hat_.shape; q=K-1; s_true=self.s_hat_.copy(); area=np.asarray(area_eff,float); cls=type(self)
+        cfg={k:v for k,v in self._init_kwargs.items() if k!='seed'}; cfg['boot_g3']=min(self.boot,20)
+        def _design_D(plots):                       # per-stand ALR design covariance from plot replicates
+            Dx=np.empty((m,q,q))
             for i in range(m):
-                npl=int(round(area[i]/plot_ac))
-                if npl>0: cb[i]=r.poisson(np.maximum(st[i]*plot_ac,1e-9),size=(npl,K)).sum(0)
-            return cb
-        def refit(cb,seed): return cls(seed=seed,**cfg).fit(cb,area,X,groups=groups).s_hat_
+                pc=plots[i]; npl=max(len(pc),1)
+                ps=(pc+0.5)/(pc.sum(1,keepdims=True)+K*0.5); alr=np.log(ps[:,:q])-np.log(ps[:,q:q+1])
+                cov=(np.cov(alr.T,ddof=1)/npl) if npl>=2 else np.eye(q)*0.25
+                Dx[i]=_nearest_pd(np.atleast_2d(cov)+1e-9*np.eye(q))
+            return Dx
+        def gen(st,seed):
+            r=np.random.default_rng(seed); cb=np.zeros((m,K)); plots=[]
+            for i in range(m):
+                npl=max(int(round(area[i]/plot_ac)),1)
+                pc=r.poisson(np.maximum(st[i]*plot_ac,1e-9),size=(npl,K)); plots.append(pc); cb[i]=pc.sum(0)
+            return cb,plots
+        def refit(cb,plots,seed):
+            Dext=_design_D(plots) if design_D else None
+            return cls(seed=seed,**cfg).fit(cb,area,X,groups=groups,D_ext=Dext).s_hat_
         acc=np.zeros((m,K)); inner=np.zeros((m,K))
         for b in range(B):
-            sb=refit(gen(s_true,1000+b),1000+b); acc+=(sb-s_true)**2
+            cb,pl=gen(s_true,1000+b); sb=refit(cb,pl,1000+b); acc+=(sb-s_true)**2
             if double:
                 bi=max(B//4,5); ia=np.zeros((m,K))
-                for c in range(bi): ia+=(refit(gen(sb,70000+b*100+c),70000+b*100+c)-sb)**2
+                for c in range(bi):
+                    cb2,pl2=gen(sb,70000+b*100+c); ia+=(refit(cb2,pl2,70000+b*100+c)-sb)**2
                 inner+=ia/bi
         single=acc/B
         return np.clip(2*single-inner/B,0,None) if double else np.clip(single,0,None)
