@@ -84,6 +84,20 @@ fixed-area cruises. The likely fix is to stop transferring a threshold between t
 different precision and instead calibrate the reported fit directly - which needs a
 prediction path for held-out areas that the engine does not yet expose.
 
+Why the bootstrap is the right variance here (measured)
+-------------------------------------------------------
+Once ``bootstrap_mse`` recomputes a design-based covariance per replicate, so it measures the
+estimator actually being reported, its calibration on populated cells is close to correct on
+well-specified populations: measured ``mse_calib`` runs 0.99-1.11 on mixed conifer and
+0.77-1.04 on young plantation, against 0.2-0.9 for the analytic variance, which also degraded
+steeply toward the upper diameter classes. The anti-conservatism that remains is confined to
+weak-covariate-signal populations (0.48-0.63 on the low classes), which is where the per-class
+inflation calibrated from the data earns its keep.
+
+The **zero-tally stratum still collapses under either covariance** (0.11-0.36), which is why
+the stratified conformal bound on that stratum is structural rather than a stopgap. No
+Gaussian works at the zero boundary, whatever variance feeds it.
+
 What is sound, and what is open
 -------------------------------
 Worth separating, because the numbers below are easy to misread as "the uncertainty
@@ -524,20 +538,29 @@ def calibrated_intervals(est, *, inventory=None, alpha=0.10, B=12, reps=2, seed=
     for a forester-facing tool the asymmetry runs one way: a slightly wide interval costs
     credibility, a narrow one costs trust. ``margin=1.0`` disables the cushion.
 
-    The cushion is not free, and the price is worth knowing. Measured on the realistic demo
-    at a nominal 90%, design-based covariance:
+    The cushion is close to free where it counts, which is worth stating precisely because
+    a naive width figure suggests otherwise. Measured on the realistic demo at nominal 90%
+    with a design-based covariance:
 
-    ========  ========  ===========  ===========  =====
-    margin    overall   populated    zero-tally   width
-    ========  ========  ===========  ===========  =====
-    1.00      0.866     0.937        0.806        4.2x
-    0.50      0.946     0.969        0.927        12.4x
-    0.35      0.966     0.976        0.958        20.5x
-    ========  ========  ===========  ===========  =====
+    ========  ========  ===========  ===========  =================
+    margin    overall   populated    zero-tally   width, populated
+    ========  ========  ===========  ===========  =================
+    1.00      0.866     0.937        0.806        1.5x
+    0.85      0.893     0.951        0.845        1.6x
+    0.70      0.911     0.959        0.871        1.7x
+    0.60      0.930     0.961        0.903        1.7x
+    0.50      0.946     0.969        0.927        1.8x
+    ========  ========  ===========  ===========  =================
 
-    The default of ``0.5`` buys validity on every stratum at roughly three times the width.
-    Most of that cost falls on the untallied stratum, where the width is measured relative to
-    a near-zero estimate and so reads far larger than it is in absolute stems per acre.
+    The default of ``0.5`` costs 0.3x of width on the classes a stand actually tallied -
+    the numbers anyone acts on - relative to no cushion at all, and buys validity on every
+    stratum. ``margin=1.0`` under-covers overall (0.866) and is not recommended.
+
+    A caution on reading width figures for this estimator: a median taken over *all* cells
+    is dominated by the untallied classes, where the ratio divides by a near-zero estimate
+    and reports numbers in the hundreds of percent. That is a property of the denominator,
+    not of the interval. Quote width on populated cells, and quote the tail in stems per
+    acre.
 
     Returns ``(lo, hi)``; attaches a :class:`CalibrationReport` to ``est.interval_report_``.
 
