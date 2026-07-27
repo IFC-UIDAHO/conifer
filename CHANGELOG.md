@@ -6,6 +6,30 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-07-27
+
+### Fixed
+- **The Stand Structure Studio produced estimates ~117x too high on the demo cruise.**
+  `conifer.demo` generates a fixed-area cruise at 0.2-acre plots, matching the real Idaho
+  design, but the app's plot-design control still defaulted to variable-radius (prism/BAF)
+  at 0.1 acres. Loading the demo and pressing Run therefore applied prism expansion factors
+  to fixed-area tallies. Measured against the demo's known truth: RMSE 1402.57 and a mean of
+  2854.8 TPA, against 1.20 and 25.0 TPA once corrected, with the truth at 24.4. Nothing was
+  raised — the run completed and produced a confident report.
+- **Structural fix, not just a corrected default.** `conifer.demo` now exports
+  `DEMO_DESIGN`, `DEMO_PLOT_AREA`, `DEMO_BAF` and `DEMO_N_STANDS`, and the app reads its
+  widget defaults from them. The two drifted apart precisely because the app hardcoded a
+  guess about what the demo generates; now it cannot. A regression test pins the constants
+  to the cruise `make_cruise` actually produces, and fails if the direct estimate and the
+  known truth are more than a factor of two apart.
+
+### Changed
+- The app's interface text now matches the voice of the stand report and the vignette.
+  Terminology is unchanged — the reader is a forester who can fact-check a p-value. The
+  help text on the plot-id field now states the consequence plainly: without plot
+  identifiers the intervals fall back to a method known to under-cover, so they will look
+  reassuringly tight and be wrong.
+
 ## [0.2.1] - 2026-07-27
 
 Documentation only. No change to the estimator, the package code, or any published API;

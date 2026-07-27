@@ -335,3 +335,35 @@ def test_hybrid_intervals_reach_nominal_on_both_strata(inv, cruise):
     # the shortfall grows as tallies thin with diameter, so the upper classes need more
     # inflation than the lower ones - independently reproduced by the simulation's mse_calib
     assert c[-1] > c[0], f"inflation should grow with class index, got {np.round(c, 2)}"
+
+
+def test_demo_design_constants_match_what_make_cruise_produces():
+    """The exported demo constants must describe the cruise the demo actually generates.
+
+    Anything consuming the demo - the app's widget defaults above all - reads these rather
+    than hardcoding a guess. They drifted apart once: the demo moved to a fixed-area cruise
+    while the app still defaulted to prism, so the demo path applied expansion factors to
+    fixed-area tallies and produced estimates 117x too high (RMSE 1402 against 1.20) with
+    nothing raised. This pins the contract.
+    """
+    from conifer import demo as D
+
+    trees, aux, _stands, truth = D.make_cruise(n_stands=60, seed=5)
+
+    # reading the constants must reproduce the truth the generator used
+    inv = conifer.from_treelist(
+        trees, stand_col="STAND", plot_col="PLOT", dbh_col="DBH_IN",
+        plot_area=D.DEMO_PLOT_AREA if D.DEMO_DESIGN == "fixed" else None,
+        baf=D.DEMO_BAF if D.DEMO_DESIGN == "prism" else None,
+        aux=aux, aux_stand_col="STAND",
+    )
+    assert inv.design == D.DEMO_DESIGN
+
+    T = truth.set_index("STAND").reindex(inv.stand_ids).to_numpy(float)
+    # the direct estimate should be on the same scale as the truth; a design mismatch throws
+    # this off by orders of magnitude rather than by a little
+    ratio = inv.direct.sum(1).mean() / max(T.sum(1).mean(), 1e-9)
+    assert 0.5 < ratio < 2.0, (
+        f"design mismatch: direct estimate is {ratio:.1f}x the truth. The demo constants no "
+        f"longer describe the cruise make_cruise generates."
+    )

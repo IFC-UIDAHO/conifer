@@ -61,7 +61,18 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-__all__ = ["make_cruise", "write_demo_files", "REAL_TARGETS"]
+__all__ = ["make_cruise", "write_demo_files", "REAL_TARGETS", "DEMO_DESIGN", "DEMO_PLOT_AREA",
+           "DEMO_BAF", "DEMO_N_STANDS"]
+
+# The cruise design this generator produces. Anything that consumes the demo - the app's
+# widget defaults, the vignette, the tests - should read these rather than hardcode a guess.
+# They drifted apart once already: the demo moved to a fixed-area cruise while the app still
+# defaulted to prism, which applied expansion factors to fixed-area tallies and produced
+# estimates 117x too high without raising anything.
+DEMO_DESIGN = "fixed"
+DEMO_PLOT_AREA = 0.2
+DEMO_BAF = 20.0
+DEMO_N_STANDS = 200
 
 _TYPES = np.array(["regenerating", "young managed", "mature mixed conifer", "legacy / old growth"])
 _SPP = np.array(["Douglas-fir", "grand fir", "western larch", "ponderosa pine",
@@ -79,8 +90,8 @@ REAL_TARGETS = {
 }
 
 
-def make_cruise(n_stands=200, seed=7, breaks=None, design="fixed",
-                plot_area=0.2, baf=20.0, realistic=True):
+def make_cruise(n_stands=DEMO_N_STANDS, seed=7, breaks=None, design=DEMO_DESIGN,
+                plot_area=DEMO_PLOT_AREA, baf=DEMO_BAF, realistic=True):
     """Simulate a cruise with a known truth, shaped like a real inventory.
 
     Parameters

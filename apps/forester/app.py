@@ -95,7 +95,7 @@ def _dl(label, data, fname, mime, key=None):
 
 @st.cache_data(show_spinner=False)
 def _demo():
-    return conifer.demo.make_cruise(n_stands=180, seed=7)
+    return conifer.demo.make_cruise(seed=7)
 
 
 # ---------------------------------------------------------------------------
@@ -195,18 +195,22 @@ with st.sidebar:
     plot_col = None if plot_col == "(none)" else plot_col
 
     st.header("3 · Your cruise")
-    design = st.radio("Plot design", ["Fixed-area plots", "Variable-radius (prism / BAF)"],
+    # Defaults follow the demo cruise, read from the package so the two cannot drift apart
+    _opts = ["Fixed-area plots", "Variable-radius (prism / BAF)"]
+    _default_design = 0 if conifer.demo.DEMO_DESIGN == "fixed" else 1
+    design = st.radio("Plot design", _opts, index=_default_design,
                       help="This decides how CONIFER estimates each stand's sampling "
                            "covariance, and the two designs need genuinely different "
                            "treatment — a prism selects trees in proportion to basal area, so "
                            "every tree carries its own expansion factor. Getting it wrong "
                            "does not raise an error; it quietly gives you the wrong numbers.")
     if design.startswith("Variable"):
-        baf = st.number_input("Basal area factor (ft²/ac)", 5.0, 100.0, 20.0, 5.0)
+        baf = st.number_input("Basal area factor (ft²/ac)", 5.0, 100.0,
+                              float(conifer.demo.DEMO_BAF), 5.0)
         plot_area, dsg = None, "prism"
     else:
-        # 0.2 ac is the demo cruise's plot size, so Load demo -> Run is correct out of the box
-        plot_area = st.number_input("Plot size (acres)", 0.005, 2.0, 0.2, 0.005, format="%.3f")
+        plot_area = st.number_input("Plot size (acres)", 0.005, 2.0,
+                                    float(conifer.demo.DEMO_PLOT_AREA), 0.005, format="%.3f")
         baf, dsg = None, "fixed"
 
     brk = st.selectbox("DBH classes", ["Six 4-inch classes (1–25 in)",
