@@ -402,6 +402,7 @@ def from_treelist(
     dbh_units: str = "in",
     area_units: str = "acre",
     min_dbh: float | None = None,
+    design_cov: str = "auto",
 ) -> Inventory:
     """Turn a tree list into a CONIFER-ready :class:`Inventory`.
 
@@ -435,6 +436,12 @@ def from_treelist(
         so conformal sets are calibrated *within* stand type.
     min_dbh : float
         Drop trees below this DBH before binning (a merchantability threshold).
+    design_cov : {'auto', 'design', 'analytic'}
+        Which sampling covariance to give the estimator. ``'design'`` builds it empirically
+        from the between-plot spread, which is valid for any plot design and makes the
+        reported data gain respond to sampling effort. ``'analytic'`` uses the engine's
+        count-model covariance. ``'auto'`` (default) uses the design-based one whenever
+        enough stands carry plot replicates, and falls back to analytic otherwise.
 
     Notes
     -----
@@ -536,6 +543,16 @@ def from_treelist(
                   if isinstance(plot_area, str) else float(plot_area))
         counts = tally
         area_eff = n_plots * pa_val
+        # A design-based sampling covariance is available for a fixed-area cruise too,
+        # whenever stands carry plot replicates - and it is better behaved than the analytic
+        # count-model one, which assumes a multinomial tally and was the source of the v0.2
+        # over-shrinkage. It also makes the reported data gain track sampling effort, which
+        # the analytic covariance does not.
+        if design_cov in ("auto", "design") and plot_stand is not None:
+            n_repl = int(np.sum(n_plots >= 2))
+            if design_cov == "design" or n_repl >= max(8, 0.25 * m):
+                from ._engine.sampling_cov import design_Di_from_plots
+                D_ext = design_Di_from_plots(plot_stand, plot_spa, m, K)
     else:
         pa_val = 1.0
         dens = wsum / n_plots[:, None]
@@ -546,7 +563,7 @@ def from_treelist(
             area_eff = np.where(dens.sum(1) > 0,
                                 tot_tally / np.clip(dens.sum(1), 1e-12, None), 1.0)
         area_eff = np.clip(area_eff, 1e-6, None)
-        if plot_spa is not None:
+        if plot_spa is not None and design_cov != "analytic":
             from ._engine.sampling_cov import design_Di_from_plots
             D_ext = design_Di_from_plots(plot_stand, plot_spa, m, K)
 

@@ -324,6 +324,16 @@ def narrative(est, *, coverage=None, calibration=None, alpha=0.10, joint=False) 
         if kind:
             p += f"Calibration method: {kind}. "
         paras.append(p.strip())
+    inv_ = getattr(est, "inventory_", None)
+    if inv_ is not None and getattr(inv_, "D_ext", None) is not None:
+        paras.append(
+            "**A caveat on these intervals.** This fit used a design-based sampling "
+            "covariance built from your plot replicates, which sharpens the estimates and "
+            "makes the data-gain figures above meaningful. The prediction intervals under "
+            "that setting are currently **approximate** - a known calibration gap, not a "
+            "silent one. Treat them as indicative, and read the measured coverage below "
+            "rather than the nominal level."
+        )
     if coverage is not None:
         paras.append("**Does the interval hold up?** " + coverage.get("summary", ""))
     elif calibration is not None:

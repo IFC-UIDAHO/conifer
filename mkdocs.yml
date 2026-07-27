@@ -1,0 +1,37 @@
+site_name: CONIFER
+site_description: Compositional, design-aware small-area estimation of forest diameter distributions with conformal prediction sets
+repo_url: https://github.com/IFC-UIDAHO/conifer
+repo_name: IFC-UIDAHO/conifer
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: green
+      accent: green
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - toc.integrate
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Methodology: methodology.md
+  - The v0.2 refinement: refinement-v0.2.md
+  - Benchmark: benchmark.md
+  - Citation: citation.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+# Getting-started and forester tutorials live in docs/vignettes/ (rendered notebooks); linked from Home.

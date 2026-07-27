@@ -60,6 +60,30 @@ What *does* help, modestly: at the 90% level the **minimum-volume simplex ellips
 coverage (0.983 vs 0.976 over three cruises). At 80% the ordering reverses. Evidence so far
 is three simulated cruises, which is not enough to change the default on.
 
+Known limitation: threshold transfer under a design-based covariance
+-------------------------------------------------------------------
+The threshold is calibrated on the *standardized* scale - ``|s_hat_A - target| <= tau * sd_A``
+- and then applied to the reported fit as ``tau * sd_full``. That transfer assumes the two
+fits' standard errors are on a comparable scale. **With a design-based sampling covariance
+(``D_ext``) they are not**: halving a stand's plots roughly doubles ``D_i``, and ``s_var_``
+responds non-proportionally. Measured on the realistic demo, the half-data fit's median
+``sd`` is ~5.7x the full fit's, so ``tau`` transfers far too small and the interval
+under-covers (0.64 against a nominal 0.90). Rescaling ``tau`` by the median sd ratio recovers
+much of it (0.85) at ~4x the width, but neither is calibrated.
+
+Consequences, stated plainly:
+
+* With the **analytic** covariance the intervals are close to nominal on the realistic demo
+  (0.75-0.88 per-class at nominal 0.90) - somewhat anti-conservative, but usable.
+* With a **design-based** covariance the point estimates are better and the reported data
+  gain becomes meaningful, but the intervals as currently transferred are **not calibrated**
+  and should be treated as approximate.
+
+Until this is resolved, ``conformalize_holdout`` should be read as approximate on data-rich
+fixed-area cruises. The likely fix is to stop transferring a threshold between two fits of
+different precision and instead calibrate the reported fit directly - which needs a
+prediction path for held-out areas that the engine does not yet expose.
+
 Closing the remaining ~2x gap without giving up validity is open work. Until then this errs
 wide, on purpose, and says so.
 
