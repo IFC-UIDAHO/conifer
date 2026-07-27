@@ -69,7 +69,7 @@ Metric units, FIA 1″/2″ class breaks, stand polygons in and out (`read_stand
 
 ```bash
 pip install "conifer-sae[app]"
-streamlit run apps/forester/app.py
+conifer-studio
 ```
 
 Upload a tree list — or press **Load the demo cruise** — and get stand tables, maps, an Excel

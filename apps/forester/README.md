@@ -12,7 +12,7 @@ printable stand report.
 
 ```bash
 pip install -r requirements.txt
-streamlit run app.py
+conifer-studio
 ```
 
 Then open the URL it prints. Click **Load the demo cruise** to see the whole workflow with
@@ -24,7 +24,7 @@ Data never leaves the machine the app runs on, so for proprietary inventory the 
 deployment is a server you control:
 
 ```bash
-streamlit run app.py --server.port 8501 --server.address 0.0.0.0
+conifer-studio --server.port 8501 --server.address 0.0.0.0
 ```
 
 behind an nginx reverse proxy on a university or agency server. Streamlit Community Cloud

@@ -33,6 +33,7 @@ app = ["conifer-sae[geo,report]", "streamlit>=1.36", "folium>=0.14", "streamlit-
 
 [project.scripts]
 conifer = "conifer.cli:main"
+conifer-studio = "conifer.studio:main"
 
 [project.urls]
 Homepage = "https://github.com/IFC-UIDAHO/conifer"
@@ -42,3 +43,9 @@ Repository = "https://github.com/IFC-UIDAHO/conifer"
 
 [tool.hatch.build.targets.wheel]
 packages = ["conifer"]
+
+# Ship the Streamlit app inside the wheel so `pip install "conifer-sae[app]"` followed by
+# `conifer-studio` works for someone who has never cloned the repository. The whole app
+# directory is mapped, not just app.py, so any helper module or asset travels with it.
+[tool.hatch.build.targets.wheel.force-include]
+"apps/forester" = "conifer/_app"
