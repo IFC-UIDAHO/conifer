@@ -84,6 +84,25 @@ fixed-area cruises. The likely fix is to stop transferring a threshold between t
 different precision and instead calibrate the reported fit directly - which needs a
 prediction path for held-out areas that the engine does not yet expose.
 
+What is sound, and what is open
+-------------------------------
+Worth separating, because the numbers below are easy to misread as "the uncertainty
+quantification is broken". It is not. **Against a known truth the conformal sets hold at
+0.90-0.91 across sampling intensities** (design-based Monte-Carlo study, plasmode AR and MS).
+The method's UQ is sound where truth is available to calibrate on.
+
+What is open is the **no-truth field calibration** - producing a valid interval on a real
+inventory, where the truth that conformal prediction needs does not exist. That is the gap
+this module addresses and has not yet closed.
+
+Two independent lines now agree that the **design-based sampling covariance is the right
+default** (``from_treelist(..., design_cov='auto')``). On the realistic demo it moved RMSE
+from 1.081 to 0.965 against a direct estimator at 1.039 - i.e. from losing to winning. The
+simulation study reproduces the same ordering on simulated known truth, on both plasmode
+regions: the v0.1 Dirichlet-multinomial floor loses to direct (0.786 / 0.722 against ~0.45),
+the v0.2 multinomial ties (0.454 / 0.452), and the design-based covariance beats it
+(0.429 / 0.447). Different data, different failure mode, same conclusion.
+
 Where the interval work actually stands (measured, not assumed)
 --------------------------------------------------------------
 The variance problem decomposes cleanly once you split cells by whether the cruise tallied
