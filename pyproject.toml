@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "conifer-sae"
-version = "0.1.2"
+version = "0.2.0"
 description = "Compositional, design-aware small-area estimation of forest diameter distributions with conformal prediction sets."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [{ name = "Jaslam Poolakkal", email = "mjaslam@uidaho.edu" }]
-keywords = ["small area estimation", "Fay-Herriot", "forestry", "diameter distribution", "compositional data", "conformal prediction", "FIA", "LiDAR", "NAIP"]
+keywords = ["small area estimation", "Fay-Herriot", "forestry", "diameter distribution", "compositional data", "conformal prediction", "FIA", "LiDAR", "NAIP", "forest inventory", "timber cruise"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -27,6 +27,9 @@ dependencies = ["numpy>=1.22", "scipy>=1.8", "scikit-learn>=1.1", "pandas>=1.4",
 [project.optional-dependencies]
 bart = ["xgboost>=1.6"]
 test = ["pytest>=7.0"]
+geo = ["geopandas>=0.13", "shapely>=2.0", "pyproj>=3.4"]
+report = ["openpyxl>=3.1"]
+app = ["conifer-sae[geo,report]", "streamlit>=1.36", "folium>=0.14", "streamlit-folium>=0.20"]
 
 [project.scripts]
 conifer = "conifer.cli:main"

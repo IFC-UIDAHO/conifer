@@ -42,9 +42,24 @@ def estimate_phi(counts):
     return float(phi)
 
 
-def alr_shares_and_Di(counts, phi=None, ref=-1, alpha=0.5):
-    """ALR of class shares + ANALYTIC Dirichlet-multinomial sampling covariance D_i.
-    counts: (m,K) integer tallies. Returns y (m,K-1), D (m,K-1,K-1), p_smooth (m,K)."""
+def alr_shares_and_Di(counts, phi=None, ref=-1, alpha=0.5, overdispersion=True):
+    """ALR of class shares + ANALYTIC sampling covariance D_i.
+    counts: (m,K) integer tallies. Returns y (m,K-1), D (m,K-1,K-1), p_smooth (m,K).
+
+    overdispersion : bool (default True, legacy v0.1 behavior)
+        True  -> Dirichlet-multinomial sampling covariance, kappa=(nᵢ+φ)/(nᵢ(1+φ)).
+                 NOTE (v0.2 lesson): with φ estimated globally by ``estimate_phi`` from the
+                 CROSS-STAND share variance, real between-stand compositional *signal* is
+                 mistaken for within-stand overdispersion, so φ is driven small and kappa
+                 approaches a NON-VANISHING floor 1/(1+φ). The EBLUP then never converges to
+                 the design-direct estimate as plot tallies grow (over-shrinkage in the
+                 data-rich regime; verified on the plasmode simulations).
+        False -> multinomial sampling covariance, kappa=1/nᵢ, which VANISHES as tallies
+                 accumulate — restoring Fay-Herriot consistency (EBLUP -> direct as D_i -> 0)
+                 while preserving the sparse-regime model-borrowing gain. Genuine plot-level
+                 overdispersion, when identified from replicates, should be supplied via the
+                 estimator's ``D_ext`` argument rather than inferred from cross-stand variance.
+    """
     counts = np.asarray(counts, float); m, K = counts.shape
     n = counts.sum(1, keepdims=True)
     p = (counts + alpha) / (n + K * alpha)               # additive-smoothed shares
@@ -53,7 +68,8 @@ def alr_shares_and_Di(counts, phi=None, ref=-1, alpha=0.5):
     y = (np.log(p) - np.log(p[:, [ref]]))[:, keep]       # ALR
     q = K - 1; D = np.empty((m, q, q))
     for i in range(m):
-        ni = max(float(n[i, 0]),1.0); kappa = (ni + phi) / (ni * (1.0 + phi))   # DM inflation
+        ni = max(float(n[i, 0]),1.0)
+        kappa = ((ni + phi) / (ni * (1.0 + phi))) if overdispersion else (1.0 / ni)   # DM floor vs vanishing multinomial
         pi = p[i]; Cov_p = kappa * (np.diag(pi) - np.outer(pi, pi))
         # Jacobian of ALR wrt p: dy_j/dp_l = [l==j]/p_j - [l==ref]/p_ref
         J = np.zeros((q, K))

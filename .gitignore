@@ -19,3 +19,7 @@ assets/*
 release.bat
 release.sh
 RELEASE_NOTES_*.md
+
+# transport copies used to move engine files between sessions - never commit these
+*_v2.py
+stub*.py

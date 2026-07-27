@@ -85,11 +85,15 @@ class DiameterDistribution:
     HAVE_BART=_HAVE_BART
     def __init__(self, n_ensemble=6, n_hidden=64, ridge=5.0, kfold=5, hurdle=True,
                  boot_g3=120, seed=0, mean_mode='ml', crossfit=True, sigma_mode='gl',
-                 regime_adaptive=False, adequacy_n0=25.0, blend_mode='gate', sure_floor=0.35, di_correction=True, basis='alr', cf_reps=1, mse_mode='plug', debias=False):
+                 regime_adaptive=False, adequacy_n0=25.0, blend_mode='gate', sure_floor=0.35, di_correction=True, basis='alr', cf_reps=1, mse_mode='plug', debias=False, di_overdispersion=False):
         self.E=n_ensemble; self.H=n_hidden; self.lam=ridge; self.K_=kfold
         self.hurdle=hurdle; self.boot=boot_g3; self.seed=seed
         self.mean_mode=mean_mode; self.crossfit=crossfit; self.sigma_mode=sigma_mode
         self.regime_adaptive=regime_adaptive; self.adequacy_n0=adequacy_n0; self.blend_mode=blend_mode; self.sure_floor=sure_floor; self.di_correction=di_correction; self.basis=basis; self.cf_reps=cf_reps; self.mse_mode=mse_mode; self.debias=debias
+        # v0.2 refinement: multinomial (vanishing) compositional sampling covariance by default so the
+        # EBLUP converges to the design-direct estimate as tallies grow (fixes rich-regime over-shrinkage
+        # traced to the Dirichlet-multinomial φ-floor). di_overdispersion=True restores the v0.1 DM covariance.
+        self.di_overdispersion=di_overdispersion
 
     def _features(self, Xc, e):
         return np.hstack([np.ones((Xc.shape[0],1)), Xc, 1/(1+np.exp(-(Xc@self.W_[e].T+self.c_[e])))])
@@ -117,7 +121,7 @@ class DiameterDistribution:
         Xc=(X-X.mean(0))/(X.std(0)+1e-9)
         self.W_=[rng.normal(scale=1/np.sqrt(X.shape[1]),size=(self.H,X.shape[1])) for _ in range(self.E)]
         self.c_=[rng.normal(size=self.H) for _ in range(self.E)]
-        y, D, psm = alr_shares_and_Di(counts)
+        y, D, psm = alr_shares_and_Di(counts, overdispersion=self.di_overdispersion)
         if D_ext is not None:                      # design-based sampling covariance (prism/BAF) override
             D = np.asarray(D_ext, float)
         self._M=self._Minv=None
@@ -537,7 +541,7 @@ class DiameterDistribution:
             vT=(var_totals[k] if var_totals is not None else (gap*gap))
             dV[:,k]=c*c*vT; c_store[:,k]=c
         self.s_bm_=s_bm; self.s_var_bm_=V+dV; self.bench_factor_=c_store
-       
+
 
 # --- CONIFER names + back-compat aliases (added when the engine was packaged) ---
 StemDensityClassSAE = DiameterDistribution   # legacy pre-CONIFER name; kept so old scripts keep working
