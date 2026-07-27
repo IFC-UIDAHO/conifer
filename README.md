@@ -247,21 +247,11 @@ with the citation once it is available. Until then, cite the software:
 `CITATION.cff` in this repository carries the machine-readable version, which GitHub renders as a
 *Cite this repository* button.
 
-## Funding and acknowledgements
+## Funding
 
-This work is supported by the **NCASI Foundation** through the
-[Partnership for Small Area Estimation (PSAE)](https://www.ncasifoundation.org/projects/partnership-for-small-area-estimation/),
-under the project *Robust small-area estimation strategies for developing accurate stand-level
-diameter distributions* (PI: Jaslam Poolakkal, University of Idaho).
-
-PSAE is a collaboration between the NCASI Foundation and the USDA Forest Service Forest Inventory
-and Analysis (FIA) program, led by Dr. Holly Munro (NCASI), and is supported by USDA Forest Service
-Rocky Mountain Research Station award **22-CA-11221638-201**. Its aim is to move FIA's small-area
-estimation capacity from experimental to operational, guided by user need — which is the same
-reason this package ships a no-code application alongside the estimator.
-
-The views expressed here are the author's and do not necessarily reflect those of the NCASI
-Foundation, NCASI, or the USDA Forest Service.
+This work was supported by the NCASI Foundation on a certain project funded by the USDA Forest
+Service, Rocky Mountain Research Station, through the
+[Partnership for Small Area Estimation](https://www.ncasifoundation.org/projects/partnership-for-small-area-estimation/).
 
 ## License
 
