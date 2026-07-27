@@ -6,12 +6,22 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-07-27
+
+### Changed
+- **Stand Structure Studio: visual redesign.** The app's presentation layer was rebuilt — a
+  generated CONIFER mark in two palettes (light for the dark hero, green for light surfaces),
+  a topographic motif, a typographic scale (Fraunces / Inter / JetBrains Mono), and reusable
+  `eyebrow` and `step` elements so the workflow reads as numbered stages rather than a wall of
+  controls. `apps/forester/_preview.html` renders the styling statically, so a layout change
+  can be eyeballed without launching Streamlit.
+- **No change to the estimator, the calibration, or any reported number.** This release is
+  presentation only; `conifer._engine`, `calibration`, and `report` are untouched.
+
 ## [0.2.3] - 2026-07-27
 
 ### Changed
 - CI: moved GitHub Actions off the deprecated Node 20 runtime (checkout / setup-python / artifact actions bumped one major). No package code changes.
-
-## [0.2.3] - 2026-07-27
 
 ### Fixed
 - **The map failed to draw for every metric.** `Could not draw the map: 'QMD (in)'`, and the

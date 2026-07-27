@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "conifer-sae"
-version = "0.2.3"
+version = "0.2.4"
 description = "Compositional, design-aware small-area estimation of forest diameter distributions with conformal prediction sets."
 readme = "README.md"
 requires-python = ">=3.9"
