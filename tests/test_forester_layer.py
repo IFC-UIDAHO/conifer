@@ -274,3 +274,31 @@ def test_coverage_check_measures_the_right_scale(inv):
     assert marg["joint"] is False
     assert "diameter class contained" in marg["summary"]
     assert marg["empirical"] >= 0.85
+
+
+def test_engine_data_gain_agrees_with_the_fallback(inv):
+    """When the engine exposes ``data_gain_``, it must match the local fallback.
+
+    ``report.data_gain`` prefers ``est.data_gain_`` over deriving gamma itself, so the moment
+    the engine starts exposing that attribute the forester-facing "% from this stand's own
+    plots" figure switches source. Both are specified as
+    ``mean(diag(Su_) / (diag(Su_) + diag(_D[i])))`` per stand, so they should agree to
+    numerical tolerance. If they ever diverge, the reported number would shift silently
+    between releases - this catches that at the swap rather than in a stand report.
+
+    Skips while the attribute does not exist yet.
+    """
+    est = inv.fit()
+    exposed = getattr(est, "data_gain_", None)
+    if exposed is None:
+        pytest.skip("engine does not expose data_gain_ yet; the fallback is in use")
+
+    Su = np.asarray(est.Su_, float)
+    D = np.asarray(est._D, float)
+    su = np.clip(np.diag(Su), 0, None)
+    local = np.array([float(np.mean(su / (su + np.clip(np.diag(D[i]), 0, None) + 1e-12)))
+                      for i in range(D.shape[0])])
+    np.testing.assert_allclose(
+        np.asarray(exposed, float), local, rtol=1e-6, atol=1e-9,
+        err_msg="engine data_gain_ disagrees with the documented gamma formula; the "
+                "reported '% from this stand's own plots' would shift on the engine swap")
