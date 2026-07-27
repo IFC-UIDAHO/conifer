@@ -144,6 +144,10 @@ input,textarea,[role="combobox"],[data-baseweb="select"] *{color:var(--ink)!impo
 .cf-kpi .s.good{color:var(--accent)}
 .cf-kpi .s.bad{color:#B4472A}
 .cf-kpi.hl{box-shadow:0 0 0 1px rgba(45,106,79,.35);background:var(--accent-tint)}
+[data-testid="stMetric"]{background:var(--surface);box-shadow:var(--ring);border-radius:12px;padding:14px 16px}
+[data-testid="stMetricLabel"] p{color:var(--muted)!important;font-size:11px!important;font-weight:600;letter-spacing:.4px;text-transform:uppercase}
+[data-testid="stMetricValue"]{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ink)!important;font-size:24px;letter-spacing:-1px}
+[data-testid="stMetricDelta"]{font-size:12px;font-weight:600}
 
 /* empty-state onboarding */
 .cf-empty{text-align:center;max-width:600px;margin:40px auto 14px}
@@ -514,21 +518,18 @@ if run or S.fitted is not None:
             "inflated, and CONIFER shrinks it toward what comparable stands support.")
 
     rhead("At a glance", "Headline numbers across every stand in the run.")
-    items = [
-        {"l": "Stands estimated", "v": f"{s.shape[0]:,}", "s": "small areas"},
-        {"l": f"Mean {M['dens']}", "v": f"{s.sum(1).mean():,.0f}", "s": "per stand, per acre"},
-        {"l": "Mean basal area", "v": f"{ba.mean():.0f}", "s": ba_units},
-        {"l": "Mean QMD", "v": f"{qmd.mean():.1f} {M['dbh_units']}", "s": "quadratic mean diameter"},
-    ]
+    k = st.columns(5)
+    k[0].metric("Stands estimated", f"{s.shape[0]:,}")
+    k[1].metric(f"Mean {M['dens']}", f"{s.sum(1).mean():,.0f}", help="per stand, per acre")
+    k[2].metric("Mean basal area", f"{ba.mean():.0f}", help=ba_units)
+    k[3].metric(f"Mean QMD ({M['dbh_units']})", f"{qmd.mean():.1f}")
     if cov is not None:
-        good = cov["meets_nominal"]
-        items.append({"l": f"{int((1-alpha)*100)}% {'joint' if joint else 'per-class'} coverage",
-                      "v": f"{cov['empirical']*100:.0f}%",
-                      "s": "measured — holds up" if good else "measured — below target",
-                      "scls": "good" if good else "bad", "hl": True})
+        k[4].metric(f"{int((1-alpha)*100)}% {'joint' if joint else 'per-class'} — measured",
+                    f"{cov['empirical']*100:.0f}%",
+                    delta="holds up" if cov["meets_nominal"] else "below target",
+                    delta_color="normal" if cov["meets_nominal"] else "inverse")
     else:
-        items.append({"l": "Coverage", "v": "—", "s": "needs plot ids"})
-    kpi_row(items)
+        k[4].metric("Coverage", "—", help="needs plot ids")
 
     if cov is not None:
         (st.success if cov["meets_nominal"] else st.warning)(cov["summary"])

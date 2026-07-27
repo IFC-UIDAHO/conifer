@@ -51,7 +51,7 @@ from .calibration import (
 )
 from . import report, plots, io, calibration, demo
 
-__version__ = "0.2.5"
+__version__ = "0.2.6"
 __all__ = [
     "DiameterDistribution", "CompositionalFH", "SpeciesComposition",
     "Inventory", "Issue", "from_treelist", "from_matrices", "read_stands", "attach_estimates",
