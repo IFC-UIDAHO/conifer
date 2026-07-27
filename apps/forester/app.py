@@ -45,8 +45,8 @@ div[data-testid="stMetricValue"]{{color:{GREEN};font-size:26px}}
 </style>""", unsafe_allow_html=True)
 
 st.markdown("""<div class='hero'><h1>🌲 CONIFER — Stand Structure Studio</h1>
-<p>Estimate the diameter distribution of every stand, including the ones with barely any plots —
-with intervals you can actually defend.</p></div>""", unsafe_allow_html=True)
+<p>Diameter distributions for every stand you have — including the ones with two plots and a
+prayer — and intervals that hold up when someone checks them.</p></div>""", unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -115,8 +115,9 @@ with st.sidebar:
     st.header("1 · Your data")
 
     if st.button("🎲  Load the demo cruise", use_container_width=True,
-                 help="180 stands, a prism cruise, LiDAR metrics and stand polygons — "
-                      "so you can see the whole workflow before touching your own data."):
+                 help="200 stands on a fixed-area cruise, with LiDAR metrics and stand "
+                      "polygons — shaped to match a real Idaho inventory, so you can walk the "
+                      "whole workflow before putting your own data anywhere near it."):
         trees, aux, stands, truth = _demo()
         S.trees, S.aux, S.truth_df = trees, aux, truth
         try:
@@ -151,23 +152,26 @@ with st.sidebar:
 trees, aux = S.trees, S.aux
 
 if trees is None:
-    st.markdown("<div class='step'><b>Start here.</b> Click <b>Load the demo cruise</b> in the "
-                "sidebar to walk through the whole thing with realistic data, or upload your own "
-                "tree list. Everything runs on this machine — nothing is uploaded anywhere.</div>",
-                unsafe_allow_html=True)
+    st.markdown("<div class='step'><b>Start here.</b> Load the demo cruise from the sidebar to "
+                "walk the whole thing on realistic data, or upload your own tree list. Either "
+                "way it runs on this machine and nothing leaves it — worth knowing before you "
+                "point it at a client's inventory.</div>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.markdown("#### What you bring\nA **tree list** — stand, plot, DBH. That's the minimum. "
-                    "Stand-level **LiDAR or spectral metrics** are what let the model borrow "
-                    "strength; a **stand polygon layer** turns the results into maps.")
+        st.markdown("#### What you bring\nA **tree list** — stand, plot, DBH. That alone is "
+                    "enough to run. Stand-level **LiDAR or spectral metrics** are what give the "
+                    "model something to borrow from, so without them it cannot do much more "
+                    "than your cruise already does. **Stand polygons** turn the results into maps.")
     with c2:
-        st.markdown("#### What it does\nBins DBH into classes, wires the correct sampling "
-                    "covariance for your plot design, fits the small-area model, and calibrates "
-                    "prediction sets **without needing to know the truth**.")
+        st.markdown("#### What it does\nBins DBH, works out the right sampling covariance for "
+                    "your plot design, fits the small-area model, then calibrates the prediction "
+                    "intervals **against your own held-out plots** — no known truth required, "
+                    "which is just as well, because no inventory has one.")
     with c3:
-        st.markdown("#### What you get\nStand tables, per-acre summaries, QMD and basal area, "
-                    "maps of structure and uncertainty, an Excel workbook, a printable stand "
-                    "report — and a measured check that the intervals hold up.")
+        st.markdown("#### What you get\nStand and stock tables, per-acre summaries, QMD and "
+                    "basal area, maps of both structure and uncertainty, an Excel workbook and a "
+                    "printable stand report. Plus a measured figure for how often the intervals "
+                    "actually contained the answer, which is the part worth showing a client.")
     st.stop()
 
 
@@ -180,21 +184,29 @@ with st.sidebar:
     stand_col = st.selectbox("Stand id", tc, index=tc.index(_guess(tc, "stand", "stand_id", "unit")) if _guess(tc, "stand", "stand_id", "unit") else 0)
     dbh_col = st.selectbox("DBH", tc, index=tc.index(_guess(tc, "dbh_in", "dbh", "diameter")) if _guess(tc, "dbh_in", "dbh", "diameter") else 0)
     _p = _guess(tc, "plot", "plot_id", "point")
-    plot_col = st.selectbox("Plot id  ·  strongly recommended", ["(none)"] + tc,
+    plot_col = st.selectbox("Plot id  ·  worth finding", ["(none)"] + tc,
                             index=(tc.index(_p) + 1) if _p else 0,
-                            help="With plot ids CONIFER can calibrate its intervals honestly "
-                                 "and compute a design-based sampling covariance. Without them "
-                                 "it has to fall back to a method known to under-cover.")
+                            help="Plot identifiers are what let CONIFER split each stand's "
+                                 "plots in two and calibrate its intervals against the half it "
+                                 "did not fit on. Without them it falls back to a method that is "
+                                 "known to under-cover — the intervals will look reassuringly "
+                                 "tight and be wrong. If your tree list has a plot or point "
+                                 "number anywhere, use it.")
     plot_col = None if plot_col == "(none)" else plot_col
 
     st.header("3 · Your cruise")
-    design = st.radio("Plot design", ["Variable-radius (prism / BAF)", "Fixed-area plots"],
-                      help="This changes the sampling covariance CONIFER uses. It matters.")
+    design = st.radio("Plot design", ["Fixed-area plots", "Variable-radius (prism / BAF)"],
+                      help="This decides how CONIFER estimates each stand's sampling "
+                           "covariance, and the two designs need genuinely different "
+                           "treatment — a prism selects trees in proportion to basal area, so "
+                           "every tree carries its own expansion factor. Getting it wrong "
+                           "does not raise an error; it quietly gives you the wrong numbers.")
     if design.startswith("Variable"):
         baf = st.number_input("Basal area factor (ft²/ac)", 5.0, 100.0, 20.0, 5.0)
         plot_area, dsg = None, "prism"
     else:
-        plot_area = st.number_input("Plot size (acres)", 0.005, 2.0, 0.1, 0.005, format="%.3f")
+        # 0.2 ac is the demo cruise's plot size, so Load demo -> Run is correct out of the box
+        plot_area = st.number_input("Plot size (acres)", 0.005, 2.0, 0.2, 0.005, format="%.3f")
         baf, dsg = None, "fixed"
 
     brk = st.selectbox("DBH classes", ["Six 4-inch classes (1–25 in)",
@@ -205,16 +217,17 @@ with st.sidebar:
               "FIA 1-inch classes (1–21 in)": "fia_1in"}[brk]
     min_dbh = st.number_input("Ignore trees below (in)", 0.0, 20.0, 0.0, 0.5)
 
-    st.header("4 · Confidence")
+    st.header("4 · Uncertainty")
     conf = st.select_slider("Interval level", [80, 90, 95], value=90)
     alpha = 1 - conf / 100
     scope = st.radio(
         "What should the interval promise?",
         ["Each diameter class (recommended)", "All classes at once"],
-        help="A per-class interval answers the question you actually ask - 'how many "
-             "10-15 inch stems?' - and is several times narrower. The joint set makes the "
-             "stronger promise that EVERY class is contained simultaneously, and pays for it "
-             "in width. Both are honestly calibrated; they just claim different things.")
+        help="Per-class answers the question people actually ask — how many 10-15 inch "
+             "stems? — and is several times narrower. The joint set promises that every class "
+             "is contained at once, which is a stronger claim and priced accordingly. Both are "
+             "honestly calibrated; they simply promise different things, and the output says "
+             "which one you are looking at.")
     joint = scope.startswith("All")
     mode = "maxscore"
 
@@ -228,7 +241,9 @@ with st.sidebar:
         gt = _guess(acols, "stand_type", "type", "stratum", "forest_type")
         group_col = st.selectbox("Stratify by  ·  optional", ["(none)"] + acols,
                                  index=(acols.index(gt) + 1) if gt else 0,
-                                 help="Calibrates intervals within stand type rather than pooling.")
+                                 help="Calibrates the intervals within each stand type rather "
+                                      "than pooling across all of them — worth using if your "
+                                      "types really do behave differently.")
         group_col = None if group_col == "(none)" else group_col
 
     run = st.button("▶  Run the estimate", type="primary", use_container_width=True)
@@ -248,7 +263,7 @@ except Exception as e:
     st.error(f"**Could not read that data.**\n\n{e}")
     st.stop()
 
-st.subheader("What CONIFER sees")
+st.subheader("What CONIFER is working with")
 c1, c2 = st.columns([1.05, 1])
 with c1:
     st.dataframe(inv.describe(), use_container_width=True)
@@ -258,7 +273,7 @@ with c2:
         st.markdown("**Data checks**")
         st.dataframe(issues, use_container_width=True, hide_index=True, height=min(300, 60 + 38 * len(issues)))
     else:
-        st.success("No problems found in the input.")
+        st.success("Nothing looks wrong with the input.")
 
 errs = [i for i in inv.issues if i.level == "error"]
 if errs:
@@ -309,8 +324,8 @@ if run or S.fitted is not None:
         (st.success if cov["meets_nominal"] else st.warning)(cov["summary"])
         st.caption(cov["note"])
 
-    tabs = st.tabs(["📖  In plain words", "📊  Stand tables", "📈  Figures",
-                    "🗺️  Map", "🔍  Trust checks", "⬇️  Download"])
+    tabs = st.tabs(["📖  In plain words", "📊  Tables", "📈  Figures",
+                    "🗺️  Map", "🔍  Does it hold up?", "⬇️  Take it away"])
 
     # ---- plain words --------------------------------------------------
     with tabs[0]:
@@ -351,15 +366,16 @@ if run or S.fitted is not None:
             f, ax = plt.subplots(figsize=(6.2, 5.4))
             cplots.plot_comparison(est, ax=ax, alpha=alpha, joint=joint)
             _fig(f)
-            st.caption("Points far off the 1:1 line are stands where the model changed the "
-                       "answer. They should be the pale ones — the stands with few plots.")
+            st.caption("Points off the 1:1 line are stands where the model moved the answer. "
+                       "They should be the pale ones — thin cruises. If a well-plotted stand "
+                       "has drifted a long way, that is worth a second look.")
         with c2:
             try:
                 f, ax = plt.subplots(figsize=(6.4, 3.5))
                 cplots.plot_borrowing(est, ax=ax)
                 _fig(f)
-                st.caption("Green is the stand's own field data; pale green is strength "
-                           "borrowed from comparable stands.")
+                st.caption("Dark green is what the stand's own plots contributed; pale green "
+                           "is what came from stands with similar structure.")
             except Exception:
                 pass
 
@@ -382,9 +398,9 @@ if run or S.fitted is not None:
                 cplots.plot_map(est, S.gdf, stand_col=sc, metric=metric, ax=ax, alpha=alpha, joint=joint)
                 _fig(f)
                 if metric == "uncertainty":
-                    st.caption("Darker stands are where the prediction interval is widest "
-                               "relative to the estimate — the places extra plots would buy "
-                               "you the most.")
+                    st.caption("Darker stands carry the widest intervals relative to their "
+                               "estimate. If you have budget for more plots next season, this "
+                               "map is where to spend it.")
             except Exception as e:
                 st.error(f"Could not draw the map: {e}")
 
@@ -400,9 +416,10 @@ if run or S.fitted is not None:
         st.markdown("##### How this was calibrated")
         st.info(cal["summary"])
         st.markdown("##### Field-only estimate vs CONIFER, stand by stand")
-        st.caption("The field-only column is what your cruise alone supports. Where the two "
-                   "differ most, check the plot count — that is the model doing its job, or "
-                   "the place to question it.")
+        st.caption("The direct column is what your cruise supports on its own. Where the two "
+                   "part company, check the plot count first — thin stands are where the model "
+                   "is supposed to move the answer, and where you should question it if it moved "
+                   "the wrong way.")
         try:
             st.dataframe(crep.comparison_table(est, alpha=alpha, joint=joint), use_container_width=True, height=380)
         except Exception as e:
