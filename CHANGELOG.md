@@ -8,6 +8,11 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [0.2.3] - 2026-07-27
 
+### Changed
+- CI: moved GitHub Actions off the deprecated Node 20 runtime (checkout / setup-python / artifact actions bumped one major). No package code changes.
+
+## [0.2.3] - 2026-07-27
+
 ### Fixed
 - **The map failed to draw for every metric.** `Could not draw the map: 'QMD (in)'`, and the
   same for total stems per acre and for uncertainty. `attach_estimates` slugs joined column
