@@ -84,6 +84,43 @@ fixed-area cruises. The likely fix is to stop transferring a threshold between t
 different precision and instead calibrate the reported fit directly - which needs a
 prediction path for held-out areas that the engine does not yet expose.
 
+Where the interval work actually stands (measured, not assumed)
+--------------------------------------------------------------
+The variance problem decomposes cleanly once you split cells by whether the cruise tallied
+anything in them. On the realistic demo, nominal 90%:
+
+======================  ==============  ==============  =========
+variance source         populated cell  zero-tally cell  width
+======================  ==============  ==============  =========
+analytic ``s_var_``     0.68 - 0.74     0.91 - 0.98      8 - 20x
+parametric bootstrap    0.74 - 0.83     0.29 - 0.32      1.7 - 1.9x
+plot-holdout conformal  0.87 - 0.98     0.48 - 0.73      wide
+======================  ==============  ==============  =========
+
+Two things follow. The **parametric bootstrap is the right variance for populated cells** -
+comparable coverage at a quarter of the width. And **no Gaussian interval can work at the
+zero boundary**, whatever its sd, which is why the tail needs a stratified bound rather than
+more variance. The intended shape is therefore: bootstrap-MSE Gaussian on populated cells, a
+Mondrian conformal bound calibrated *within the zero-tally stratum*, and the zero floor
+throughout. Prototyped, and the tail bound reaches 0.97-0.997 on the stratum it governs.
+
+Two traps recorded so they are not re-entered
+---------------------------------------------
+**Do not fit an sd-inflation constant.** Measuring the factor needed to bring bootstrap
+coverage to nominal on populated cells gives ~1.75 (analytic) and ~1.25 (design-based). Both
+numbers are an artefact: ``bootstrap_mse`` refits via ``.fit(cb, area, X, groups=...)`` with
+**no** ``D_ext``, so its replicates always run the analytic covariance no matter what the
+reported fit used. When the reported fit is design-based, the bootstrap is measuring a
+different estimator's variance than the one being reported, and any constant fitted to close
+that gap is absorbing a wiring mismatch. It would not transfer to another region - the same
+mistake as transferring a conformal threshold between two fits of different precision. Fix
+the mechanism, then re-measure; only then ask whether residual inflation is needed, and
+calibrate it from the analysed data rather than importing a value from elsewhere.
+
+**Do not reach for the double bootstrap.** ``2*single - inner`` is unstable on degenerate
+compositions: measured median sd fell to 0.0003 as the correction overshot into the zero
+clip, and coverage dropped to 0.41. It is not a usable knob here.
+
 Closing the remaining ~2x gap without giving up validity is open work. Until then this errs
 wide, on purpose, and says so.
 
