@@ -38,7 +38,7 @@ import conifer
 inv = conifer.from_treelist(
     trees,                       # one row per tallied tree
     stand_col="STAND", plot_col="PLOT", dbh_col="DBH_IN",
-    baf=20,                      # prism cruise; use plot_area=0.1 for fixed-area plots
+    plot_area=0.2,               # fixed-area cruise; use baf=20 for a prism cruise
     aux=stand_metrics,           # LiDAR / spectral / terrain, one row per stand
     aux_stand_col="STAND",
 )
@@ -46,8 +46,12 @@ print(inv.describe())            # what CONIFER sees
 print(inv.issue_table())         # problems, in language you can act on
 
 est = inv.fit()
-conifer.conformalize_holdout(est)                 # calibrate — no known truth needed
-cov = conifer.coverage_check(est)                 # and check that it actually holds up
+
+# prediction intervals, calibrated from your own plots — no known truth needed
+lo, hi = conifer.calibration.calibrated_intervals(est, alpha=0.10)
+print(est.interval_report_.summary)
+
+cov = conifer.coverage_check(est)                 # and check that they actually hold up
 print(cov.summary)
 # "Across 10 independent splits, the 90% interval for a given diameter class contained
 #  the held-out field value 91% of the time. That meets the stated level."
@@ -97,9 +101,26 @@ construction, and it errs wide rather than narrow.
 
 **Per-class by default.** For any one diameter class you name, the reported interval contains the
 truth at the stated rate. That is the question a forester actually asks, and it is several times
-narrower than a set guaranteed to contain *all* classes simultaneously (~3.4× the estimate against
-~29×, at 0.953 measured per-class coverage). Pass `joint=True` for the simultaneous claim. Every
-table and figure states which of the two it is reporting.
+narrower than a set guaranteed to contain *all* classes at once. Pass `joint=True` for the
+simultaneous claim; every table and figure states which of the two it is reporting.
+
+**Tallied and untallied classes are different problems.** `calibrated_intervals()` builds a
+Gaussian interval on the parametric bootstrap MSE for classes a stand actually tallied, inflated
+per class by a factor calibrated from your own plot splits, and gives classes with no tally a
+stratified bound and a physical zero floor instead. No Gaussian works at the zero boundary
+whatever its standard deviation. Measured against a known truth on a cruise shaped like the real
+St. Joe inventory, at a nominal 90%:
+
+| | measured coverage |
+|---|---|
+| overall | **0.946** |
+| classes the cruise tallied | 0.969 |
+| classes with no tally | 0.927 |
+
+Deliberately a little above nominal, not on it: a calibration tuned to hit 90% exactly on one
+forest will not hold on the next. On the classes anyone acts on the interval runs about ±90% of
+the estimate. Read the untallied classes in stems per acre rather than percent — the denominator
+there is near zero, so a percentage reads alarmingly and means very little.
 
 Both claims are checked, not asserted: `coverage_check()` measures realised coverage on held-out
 plots and reports it in a sentence you can put in front of a client.
@@ -122,25 +143,13 @@ Run the minimal worked example:
 python examples/quickstart.py
 ```
 
-## Watch it run — a worked example
+## The step-by-step vignette
 
-<p align="center">
-  <a href="https://github.com/IFC-UIDAHO/conifer/raw/main/docs/media/conifer-demo.mp4">
-    <img src="https://raw.githubusercontent.com/IFC-UIDAHO/conifer/main/docs/media/conifer-demo-poster.png"
-         alt="Watch the CONIFER worked example (36-second screencast)" width="88%">
-  </a>
-</p>
-
-A ~36-second screencast of the real workflow — **every panel is actually executed**, showing the
-live output and figures. Click the poster to play, or
-[download the MP4](https://github.com/IFC-UIDAHO/conifer/raw/main/docs/media/conifer-demo.mp4).
-
-### Step-by-step vignette
-
-A full, `sae`-style walkthrough — fit, point estimates, a QMD functional, parametric intervals,
-design-aware conformal sets (per-class, joint $L_\infty$, and a min-volume simplex ellipsoid), an
-**honest coverage check**, benchmarking, plotting, and the command line — on small, fully
-reproducible synthetic data. Every number and figure is produced by the code above it.
+An executed walkthrough of the path above — the tree list you have, `from_treelist` and its data
+checks, the fit, *how much of each estimate came from that stand's own plots*, calibrated
+intervals with a coverage check, the tables, your cruise beside CONIFER, and the plain-language
+narrative. Every number and figure is produced by the code above it, on a synthetic cruise
+calibrated to the measured shape of the real St. Joe inventory.
 
 - **Notebook** (renders on GitHub): [`docs/vignettes/conifer-getting-started.ipynb`](https://github.com/IFC-UIDAHO/conifer/blob/main/docs/vignettes/conifer-getting-started.ipynb)
 - **Rendered HTML**: [open the executed vignette](https://raw.githack.com/IFC-UIDAHO/conifer/main/docs/vignettes/conifer-getting-started.html)
@@ -201,7 +210,59 @@ conifer fit --counts counts.csv --area area.csv --aux aux.csv --out s_hat.csv
 
 ## Validation
 
-The estimator was developed and stress-tested in the St. Joe (Idaho) study: on the merchantable
-diameter distribution it significantly beats the direct estimator and a broad competitor slate
-(kNN, Weibull, MERF, SAEforest, BART-FH, Dirichlet-multinomial, KBAABB, a multivariate FH), is
-coherent with FIA (design-consistent), and its conformal set is the only 
+The estimator was developed and stress-tested on the St. Joe (Idaho) cruise. On the merchantable
+diameter distribution it significantly beats the direct estimator and a broad competitor slate —
+kNN, Weibull, MERF, SAEforest, BART-FH, Dirichlet-multinomial, KBAABB and a multivariate
+Fay–Herriot — while remaining coherent with the design-based FIA totals it rolls up to. A
+design-based Monte-Carlo study on two plasmode populations reproduces the same ordering
+independently, and finds conformal coverage holding at 0.90–0.91 against a known truth across
+sampling intensities.
+
+Two things this project has been careful to state rather than bury:
+
+- **CONIFER defers where it should.** As a stand accumulates plots, a Fay–Herriot estimator is
+  supposed to converge to the direct estimate rather than beat it, and it does. The gain is in
+  genuinely thin samples — which is what small-area estimation is for.
+- **The bundled demo is not evidence of accuracy.** It is calibrated to the *shape* of a real
+  cruise so the workflow and the intervals can be exercised honestly, but at ~20 plots per stand
+  it sits in the data-rich regime and its synthetic covariates carry less signal than real LiDAR.
+  `conifer.demo`'s own docstring says so. The accuracy claim rests on the Idaho and Arkansas
+  studies against real cruises.
+
+## Citing this work
+
+A methodology manuscript describing the estimator is **under review**; this README will be updated
+with the citation once it is available. Until then, cite the software:
+
+```bibtex
+@software{poolakkal_conifer,
+  author  = {Poolakkal, Jaslam},
+  title   = {{CONIFER}: compositional, design-aware small-area estimation of
+             forest diameter distributions},
+  url     = {https://github.com/IFC-UIDAHO/conifer},
+  note    = {Methodology manuscript under review}
+}
+```
+
+`CITATION.cff` in this repository carries the machine-readable version, which GitHub renders as a
+*Cite this repository* button.
+
+## Funding and acknowledgements
+
+This work is supported by the **NCASI Foundation** through the
+[Partnership for Small Area Estimation (PSAE)](https://www.ncasifoundation.org/projects/partnership-for-small-area-estimation/),
+under the project *Robust small-area estimation strategies for developing accurate stand-level
+diameter distributions* (PI: Jaslam Poolakkal, University of Idaho).
+
+PSAE is a collaboration between the NCASI Foundation and the USDA Forest Service Forest Inventory
+and Analysis (FIA) program, led by Dr. Holly Munro (NCASI), and is supported by USDA Forest Service
+Rocky Mountain Research Station award **22-CA-11221638-201**. Its aim is to move FIA's small-area
+estimation capacity from experimental to operational, guided by user need — which is the same
+reason this package ships a no-code application alongside the estimator.
+
+The views expressed here are the author's and do not necessarily reflect those of the NCASI
+Foundation, NCASI, or the USDA Forest Service.
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).
