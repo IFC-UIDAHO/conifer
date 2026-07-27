@@ -6,6 +6,20 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-27
+
+Documentation only. No change to the estimator, the package code, or any published API;
+the 0.2.0 wheel is functionally identical to this one.
+
+### Fixed
+- **Documented `python -m conifer.studio` as the launch that does not depend on `PATH`.**
+  On Windows, pip installs console scripts into `%APPDATA%\Python\Python3xx\Scripts`,
+  which is frequently absent from `PATH` — so `conifer-studio` fails with
+  `CommandNotFoundException` even though it installed correctly. `python -m conifer.studio`
+  takes the same arguments and behaves identically on every platform. This is released as a
+  patch because PyPI renders `README.md` on the project page, and someone installing from
+  PyPI is exactly the person who hits this.
+
 ## [0.2.0] - 2026-07-26
 
 ### Changed
