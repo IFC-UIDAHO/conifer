@@ -603,6 +603,9 @@ def calibrated_intervals(est, *, inventory=None, alpha=0.10, B=12, reps=2, seed=
     lo = np.where(pop, lo, 0.0)
     hi = np.where(pop, hi, np.maximum(hi, est.s_hat_ + tail))
 
+    est._cal_kind_ = ("bootstrap MSE on classes with stems, inflated per class from your own "
+                      "plot splits; a separate bound on classes with none")
+    est._cal_alpha_ = alpha
     est.interval_report_ = CalibrationReport(
         summary=("%d%% intervals: a bootstrap-MSE Gaussian on the classes this stand actually "
                  "tallied, inflated per class by %s as calibrated from your own plot data; a "

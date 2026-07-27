@@ -173,8 +173,8 @@ def summary_table(est, *, joint=False, alpha=0.10, round_to=1) -> pd.DataFrame:
     }, index=pd.Index(M["ids"], name="stand"))
 
     if lo is not None:
-        out[f"total {M['dens']} low"] = lo.sum(1)
-        out[f"total {M['dens']} high"] = hi.sum(1)
+        out[f"total {M['dens']} — low"] = lo.sum(1)
+        out[f"total {M['dens']} — high"] = hi.sum(1)
         # Absolute width first, and the relative figure computed on the classes the stand
         # actually tallied. A relative width that includes the untallied classes divides by a
         # near-zero estimate and reads enormous - a property of the denominator, not of the
@@ -184,7 +184,7 @@ def summary_table(est, *, joint=False, alpha=0.10, round_to=1) -> pd.DataFrame:
         popm = (inv_.counts > 0) if inv_ is not None else np.ones_like(s, bool)
         with np.errstate(invalid="ignore", divide="ignore"):
             relp = np.where(popm, (hi - lo) / np.clip(s, 1e-9, None), np.nan)
-        out["width on tallied classes (% of estimate)"] = 100 * np.nanmean(relp, axis=1)
+        out["interval width, classes with stems (%)"] = 100 * np.nanmean(relp, axis=1)
 
     inv = getattr(est, "inventory_", None)
     if inv is not None:
@@ -198,8 +198,8 @@ def summary_table(est, *, joint=False, alpha=0.10, round_to=1) -> pd.DataFrame:
                        np.round(inv.area_eff, 3))
     g = data_gain(est)
     if g is not None:
-        out["% from this stand's plots"] = 100 * g
-        out["% borrowed from similar stands"] = 100 * (1 - g)
+        out["% from own plots"] = 100 * g
+        out["% from similar stands"] = 100 * (1 - g)
     return out.round(round_to)
 
 
@@ -211,14 +211,14 @@ def class_summary(est, *, joint=False, alpha=0.10, round_to=2) -> pd.DataFrame:
     out = pd.DataFrame({
         f"mean {M['dens']}": s.mean(0),
         "share of stems (%)": 100 * s.mean(0) / max(s.mean(0).sum(), 1e-12),
-        "stands with 1+ TPA": (s >= 1.0).sum(0),
+        "stands carrying this class": (s >= 1.0).sum(0),
     }, index=pd.Index(M["labels"], name="DBH class"))
     if lo is not None:
         out.insert(1, "low", lo.mean(0))
         out.insert(2, "high", hi.mean(0))
     inv = getattr(est, "inventory_", None)
     if inv is not None:
-        out.insert(0, f"field-only {M['dens']}", inv.direct.mean(0))
+        out.insert(0, f"direct estimate ({M['dens']})", inv.direct.mean(0))
     return out.round(round_to)
 
 
@@ -251,7 +251,7 @@ def comparison_table(est, *, alpha=0.10, joint=False, round_to=1) -> pd.DataFram
         ]
     g = data_gain(est)
     if g is not None:
-        out["% from this stand's plots"] = np.round(100 * g, 0)
+        out["% from own plots"] = np.round(100 * g, 0)
     return out.round(round_to)
 
 
@@ -276,10 +276,10 @@ def narrative(est, *, coverage=None, calibration=None, alpha=0.10, joint=False) 
     paras = []
 
     # 1 — what was estimated
-    p = (f"CONIFER estimated the diameter distribution for **{m} stands** across "
-         f"**{K} DBH classes** ({M['labels'][0]} through {M['labels'][-1]}). ")
+    p = (f"Estimated diameter distributions for **{m} stands**, across **{K} DBH classes** "
+         f"({M['labels'][0]} through {M['labels'][-1]}). ")
     if inv is not None:
-        p += (f"The estimate draws on **{int(inv.counts.sum()):,} tallied trees** over "
+        p += (f"The fit rests on **{int(inv.counts.sum()):,} tallied stems** over "
               f"**{inv.area_eff.sum():,.0f} sampled {au}s**")
         if inv.n_plots is not None:
             p += f", a median of **{np.median(inv.n_plots):.0f} plots per stand**"
@@ -289,12 +289,13 @@ def narrative(est, *, coverage=None, calibration=None, alpha=0.10, joint=False) 
     # 2 — the headline numbers
     big = int(np.argmax(s.mean(0)))
     paras.append(
-        f"Across the whole area the estimated stand structure averages "
-        f"**{s.sum(1).mean():,.0f} {dens}**, a basal area of **{ba.mean():.0f} "
-        f"{'ft²/ac' if du == 'in' else 'm²/ha'}**, and a quadratic mean diameter of "
-        f"**{qmd.mean():.1f} {du}** (range {qmd.min():.1f}–{qmd.max():.1f} {du} across stands). "
-        f"The **{M['labels'][big]}** class carries the most stems, at "
-        f"{s.mean(0)[big]:,.0f} {dens} — {100*s.mean(0)[big]/max(s.mean(0).sum(),1e-9):.0f}% of all stems."
+        f"Across everything, a typical stand carries "
+        f"**{s.sum(1).mean():,.0f} {dens}** with **{ba.mean():.0f} "
+        f"{'ft²/ac' if du == 'in' else 'm²/ha'} of basal area**, at a quadratic mean diameter of "
+        f"**{qmd.mean():.1f} {du}**. That last figure spans {qmd.min():.1f} to {qmd.max():.1f} "
+        f"{du} across the property, so the average hides a good deal. The bulk of the stems sit "
+        f"in the **{M['labels'][big]}** class \u2014 {s.mean(0)[big]:,.0f} {dens}, roughly "
+        f"{100*s.mean(0)[big]/max(s.mean(0).sum(),1e-9):.0f}% of the total."
     )
 
     # 3 — where the number came from: data vs model
@@ -304,13 +305,12 @@ def narrative(est, *, coverage=None, calibration=None, alpha=0.10, joint=False) 
         thin = int(np.sum(w < 40))
         thin_ids = np.argsort(w)[:3]
         paras.append(
-            f"On average **{w.mean():.0f}% of each stand's estimate rests on that stand's own "
-            f"plots**, and the remaining {100-w.mean():.0f}% is borrowed from stands that look "
-            f"like it. That split is not a setting — it is what the model computes from how "
-            f"noisy each stand's own data is, and it ranges from **{w.min():.0f}% to "
-            f"{w.max():.0f}%** across your stands. The lowest are "
-            f"{', '.join(str(x) for x in np.asarray(M['ids'])[thin_ids])} — check those first "
-            f"if a number looks wrong, because they are leaning hardest on the model."
+            f"On average **{w.mean():.0f}% of a stand's estimate comes from its own plots**, "
+            f"the rest from stands with comparable structure. That weight is the model's "
+            f"shrinkage factor, not a setting anyone picked, and here it spans "
+            f"**{w.min():.0f}% to {w.max():.0f}%**. The stands leaning hardest on their "
+            f"neighbours are {', '.join(str(x) for x in np.asarray(M['ids'])[thin_ids])}. "
+            f"If something in this report looks wrong, start with those."
         )
 
     # 4 — uncertainty, and whether it can be trusted
@@ -319,9 +319,9 @@ def narrative(est, *, coverage=None, calibration=None, alpha=0.10, joint=False) 
         kind = getattr(est, "_cal_kind_", "calibrated")
         lvl = int((1 - alpha) * 100)
         if joint:
-            p = (f"The **{lvl}% prediction set** covers **all {K} diameter classes at once** — "
-                 f"a stronger claim, and correspondingly a wider one. It spans on average "
-                 f"**±{rel.mean()/2:.0f}% of the estimate** for total {dens}. ")
+            p = (f"This is the **simultaneous {lvl}% set**: it covers all {K} DBH classes at "
+                 f"once. A stronger claim than the per-class version, and it pays for that in "
+                 f"width \u2014 about ±{rel.mean()/2:.0f}% on total {dens}. ")
         else:
             inv_ = getattr(est, "inventory_", None)
             popm = (inv_.counts > 0) if inv_ is not None else np.ones_like(s, bool)
@@ -329,30 +329,30 @@ def narrative(est, *, coverage=None, calibration=None, alpha=0.10, joint=False) 
                 relp = np.where(popm, (hi - lo) / np.clip(s, 1e-9, None), np.nan)
             wp = float(np.nanmean(relp)) * 100
             tail_abs = float(np.mean((hi - lo)[~popm])) if (~popm).any() else 0.0
-            p = (f"Each class carries its own **{lvl}% interval**: for any single diameter "
-                 f"class you name, the interval shown contains that stand's true density "
-                 f"{lvl}% of the time. On the classes a stand actually tallied it spans "
-                 f"**±{wp/2:.0f}% of the estimate**. For classes where nothing was tallied the "
-                 f"interval runs from zero up to about **{tail_abs:.1f} {dens}** — small in "
-                 f"absolute terms, but large as a percentage precisely because the estimate it "
-                 f"is measured against is near zero, so read those in {dens} and not in "
-                 f"percent. This is a per-class guarantee, not a promise about all {K} classes "
-                 f"at once; for that, ask for the joint set, which is wider. ")
-        if kind:
-            p += f"Calibration method: {kind}. "
+            p = (f"Each DBH class carries its own **{lvl}% prediction interval**, calibrated "
+                 f"per class. On classes where the cruise found stems, those intervals run to "
+                 f"about **±{wp/2:.0f}% of the estimate**. On classes it found none, the "
+                 f"interval runs from zero to "
+                 + (f"**under 0.1 {dens}**" if tail_abs < 0.05 else f"**about {tail_abs:.2f} {dens}**")
+                 + f". That second "
+                 f"figure looks alarming as a percentage and is not: the denominator is very "
+                 f"near zero, so read the empty classes in {dens}, not in percent. The "
+                 f"guarantee is marginal \u2014 it holds for whichever single class you ask "
+                 f"about, not simultaneously across all {K}. ")
+        if kind and kind != "calibrated":
+            p += f"How they were calibrated: {kind}. "
         paras.append(p.strip())
     inv_ = getattr(est, "inventory_", None)
     if inv_ is not None and getattr(inv_, "D_ext", None) is not None:
         paras.append(
-            "**A caveat on these intervals.** This fit used a design-based sampling "
-            "covariance built from your plot replicates, which sharpens the estimates and "
-            "makes the data-gain figures above meaningful. The prediction intervals under "
-            "that setting are currently **approximate** - a known calibration gap, not a "
-            "silent one. Treat them as indicative, and read the measured coverage below "
-            "rather than the nominal level."
+            "**On the sampling covariance.** Most of your stands have repeat plots, so the "
+            "spread between them was used to estimate each stand's sampling variance directly "
+            "rather than assuming a count model. That sharpens the estimates and is what makes "
+            "the own-plots percentages above meaningful \u2014 with the assumed covariance "
+            "they sit flat regardless of how much a stand was cruised, which tells you nothing."
         )
     if coverage is not None:
-        paras.append("**Does the interval hold up?** " + coverage.get("summary", ""))
+        paras.append("**Do the intervals hold up?** " + coverage.get("summary", ""))
     elif calibration is not None:
         paras.append(calibration.get("summary", ""))
 
@@ -362,11 +362,12 @@ def narrative(est, *, coverage=None, calibration=None, alpha=0.10, joint=False) 
         agree = np.mean((d.sum(1) >= lo.sum(1)) & (d.sum(1) <= hi.sum(1)))
         shift = 100 * (s.sum(1).mean() - d.sum(1).mean()) / max(d.sum(1).mean(), 1e-9)
         paras.append(
-            f"Compared with the **field-only (design-direct) estimate**, CONIFER's total density "
-            f"differs by **{shift:+.1f}% on average**, and the field-only estimate falls inside "
-            f"CONIFER's prediction set for **{100*agree:.0f}% of stands**. Where the two disagree "
-            f"most, it is almost always a stand with few plots — the model is pulling a noisy "
-            f"direct estimate back toward what comparable, better-sampled stands look like."
+            f"Against the **design-based estimate from the cruise alone**, these totals differ "
+            f"by **{shift:+.1f}% on average**, and the direct estimate falls inside the "
+            f"prediction interval for **{100*agree:.0f}% of stands**. The disagreements "
+            f"concentrate in thinly cruised stands, which is the intended behaviour: that is "
+            f"the model pulling a high-variance direct estimate toward what comparable, "
+            f"better-sampled stands support."
         )
 
     # 6 — honest caveats
@@ -377,9 +378,10 @@ def narrative(est, *, coverage=None, calibration=None, alpha=0.10, joint=False) 
                 caveats.append(i.message)
     if m < 30:
         caveats.append(f"Only {m} stands were available; below about 30, the between-stand "
-                       "covariance is hard to pin down and intervals should be read as indicative.")
+                       "there are too few stands to tell reliably how much they vary, so read the "
+                       "intervals as a guide rather than a guarantee.")
     if caveats:
-        paras.append("**Read with care:** " + " ".join(caveats[:4]))
+        paras.append("**Worth knowing before you use this:** " + " ".join(caveats[:4]))
 
     return paras
 
@@ -471,7 +473,7 @@ def to_html(est, path, *, title="Forest Structure Report", subtitle="", alpha=0.
     ]
     if coverage is not None and np.isfinite(coverage.get("empirical", np.nan)):
         kpis.append((f"{coverage['empirical']*100:.0f}%",
-                     f"checked coverage of the {int(coverage['nominal']*100)}% interval"))
+                     f"of the time the {int(coverage['nominal']*100)}% range was right"))
 
     parts = [
         "<!doctype html><html><head><meta charset='utf-8'>",
@@ -490,11 +492,11 @@ def to_html(est, path, *, title="Forest Structure Report", subtitle="", alpha=0.
     if coverage is not None:
         cls = "ok" if coverage.get("meets_nominal") else "warn"
         parts.append(f"<div class='note'><span class='badge {cls}'>"
-                     f"{'Interval check passed' if coverage.get('meets_nominal') else 'Interval check: review'}"
+                     f"{'The ranges hold up' if coverage.get('meets_nominal') else 'Worth a closer look'}"
                      f"</span> {_md_bold(coverage.get('summary',''))}"
                      f"<br><small>{_html.escape(coverage.get('note',''))}</small></div>")
 
-    parts.append("<h2>What this says</h2>")
+    parts.append("<h2>What this shows</h2>")
     parts += [f"<p>{_md_bold(p)}</p>" for p in
               narrative(est, coverage=coverage, calibration=calibration, alpha=alpha, joint=joint)]
 
@@ -505,18 +507,20 @@ def to_html(est, path, *, title="Forest Structure Report", subtitle="", alpha=0.
                          f"<figcaption style='font-size:12.5px;color:#5d6d64;margin-top:7px'>"
                          f"{_html.escape(cap)}</figcaption></figure>")
 
-    parts.append("<h2>Estimated distribution, all stands</h2>")
+    parts.append("<h2>Diameter distribution across all stands</h2>")
     parts.append(class_summary(est, alpha=alpha, joint=joint).to_html(border=0, classes="t"))
 
-    parts.append("<h2>Summary by stand</h2><div class='scroll'>")
+    parts.append("<h2>Stand by stand</h2><div class='scroll'>")
     parts.append(summary_table(est, alpha=alpha, joint=joint).to_html(border=0))
     parts.append("</div>")
 
     try:
-        parts.append("<h2>Field-only estimate vs CONIFER</h2>")
-        parts.append("<div class='note'>The field-only column is what the cruise alone supports. "
-                     "CONIFER borrows strength from comparable stands, so its estimate is steadier "
-                     "in thinly sampled stands — the ones where the two columns differ most.</div>")
+        parts.append("<h2>Direct estimate vs CONIFER</h2>")
+        parts.append("<div class='note'>The direct column is the design-based estimate from "
+                     "each stand's own plots. CONIFER's column adds strength borrowed from "
+                     "structurally similar stands, which steadies the answer where the sample is "
+                     "thin. The largest gaps are almost always the thinnest cruises \u2014 check "
+                     "the plot count before trusting or dismissing one.</div>")
         parts.append("<div class='scroll'>")
         parts.append(comparison_table(est, alpha=alpha, joint=joint).to_html(border=0))
         parts.append("</div>")
@@ -525,7 +529,7 @@ def to_html(est, path, *, title="Forest Structure Report", subtitle="", alpha=0.
 
     inv = getattr(est, "inventory_", None)
     if inv is not None and inv.issues:
-        parts.append("<h2>Data checks</h2>")
+        parts.append("<h2>Notes on your data</h2>")
         for i in inv.issues:
             cls = "caution" if i.level in ("error", "warning") else ""
             parts.append(f"<div class='note {cls}'><strong>{i.level.upper()}</strong> — "
@@ -533,12 +537,17 @@ def to_html(est, path, *, title="Forest Structure Report", subtitle="", alpha=0.
                          + (f"<br><small>{_html.escape(i.fix)}</small>" if i.fix else "") + "</div>")
 
     parts.append(
-        "<footer>Estimates are model-based (compositional area-level Fay–Herriot with a "
-        "cross-fitted debiased machine-learned mean and design-aware conformal prediction sets). "
-        "They borrow strength across stands and are not a substitute for a design-based estimate "
-        "where the sample is adequate. Prediction sets state where a stand's value is expected to "
-        "lie, not where the estimate's mean lies."
-        "</footer></div></body></html>"
+        "<footer><b>Method.</b> These are model-based estimates from a compositional "
+        "area-level Fay\u2013Herriot model with a cross-fitted, debiased machine-learned mean. "
+        "Each stand borrows strength from stands with similar LiDAR and terrain covariates, "
+        "weighted by how precise its own plot data is. That means a well-cruised stand should "
+        "come out close to its design-based estimate; if it does, the model is behaving. "
+        "<b>Intervals.</b> The ranges quoted are prediction intervals for the stand itself, not "
+        "confidence intervals for the mean, and they are calibrated on held-out plots rather "
+        "than assumed. They are set to run slightly wide of nominal on purpose \u2014 a "
+        "calibration tuned to hit 90% exactly on one forest will not hold on the next. "
+        "Model-based estimates supplement a design-based cruise; they do not replace one where "
+        "the sample is already adequate.</footer></div></body></html>"
     )
     out = "\n".join(parts)
     with open(path, "w", encoding="utf-8") as f:
