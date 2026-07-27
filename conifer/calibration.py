@@ -152,7 +152,7 @@ import numpy as np
 
 __all__ = [
     "conformalize_holdout", "conformalize_naive", "coverage_check", "CalibrationReport",
-    "conformalize_direct",
+    "conformalize_direct", "calibrated_intervals",
 ]
 
 _MV = ("min_vol", "minvol", "ellipsoid")
@@ -491,3 +491,98 @@ def coverage_check(est, *, inventory=None, alpha=0.10, joint=False, mode="maxsco
         reps=len(hits),
         note=note,
     )
+
+
+# ---------------------------------------------------------------------------
+# The hybrid interval
+# ---------------------------------------------------------------------------
+def calibrated_intervals(est, *, inventory=None, alpha=0.10, B=12, reps=2, seed=0,
+                         min_plots=2, verbose=False):
+    """Prediction intervals that treat tallied and untallied classes as different problems.
+
+    Three pieces, each measured rather than assumed:
+
+    1. **Populated cells** - classes the cruise actually tallied - get a Gaussian interval
+       built on the **parametric bootstrap MSE** rather than the analytic ``s_var_``. The
+       bootstrap is the better variance here (comparable coverage at roughly a quarter of the
+       width) and, unlike ``s_var_``, it transfers between fits of different precision at
+       close to the principled ``sqrt(2)``: measured per-class half/full ratios ~1.5-2.5,
+       against 1.4-6.7 for ``s_var_``. That stability is what makes step 2 meaningful.
+    2. A **per-class inflation factor**, calibrated from *this* dataset by splitting each
+       stand's plots, fitting on one half and scoring against the other. Deliberately
+       per-class: the variance shortfall grows with diameter class as tallies thin out. No
+       constant is imported - a factor fitted on one region does not transfer to another.
+    3. **Zero-tally cells** get a stratified conformal bound instead of a Gaussian. On that
+       stratum the bootstrap sd collapses to ~1e-4, and no Gaussian can work at the zero
+       boundary whatever its sd, so the bound is calibrated within the untallied stratum
+       itself and paired with the physical zero floor.
+
+    Returns ``(lo, hi)``; attaches a :class:`CalibrationReport` to ``est.interval_report_``.
+
+    Needs plot identifiers. Costs ``reps + 1`` bootstrap runs plus ``reps`` refits.
+    """
+    from scipy.stats import norm
+
+    inv = _inv_of(est, inventory)
+    if inv.plot_stand is None:
+        raise ValueError("calibrated_intervals needs plot identifiers; rebuild the inventory "
+                         "with from_treelist(..., plot_col=...).")
+    z = float(norm.ppf(1 - alpha / 2))
+    cfg = _fit_kwargs(est)
+    m, K = est.s_hat_.shape
+    pa = getattr(inv, "plot_area", 0.1) or 0.1
+
+    sd_full = np.sqrt(np.clip(
+        est.bootstrap_mse(inv.area_eff, inv.X, groups=inv.groups, B=B, plot_ac=pa), 1e-12, None))
+    pop = inv.counts > 0
+
+    c_reps, tail_reps = [], []
+    for r in range(max(1, reps)):
+        a, b, elig = inv.split_plots(frac=0.5, seed=seed + r, min_plots=min_plots)
+        if elig.size < 8:
+            break
+        est_a = a.fit(seed=getattr(est, "seed", 0), **cfg)
+        sd_a = np.sqrt(np.clip(
+            est_a.bootstrap_mse(a.area_eff, a.X, groups=a.groups, B=B, plot_ac=pa), 1e-12, None))
+        resid = np.abs(est_a.s_hat_ - b.direct)
+        popA = a.counts > 0
+        keep = np.zeros(m, bool)
+        keep[elig] = True
+        ck = np.ones(K)
+        tk = np.zeros(K)
+        for k in range(K):
+            sel = popA[:, k] & keep
+            if sel.sum() >= 8:
+                ratio = resid[sel, k] / np.clip(z * sd_a[sel, k], 1e-12, None)
+                ck[k] = float(np.quantile(ratio, 1 - alpha))
+            sel0 = (~popA[:, k]) & keep
+            if sel0.sum() >= 8:
+                tk[k] = float(np.quantile(resid[sel0, k], 1 - alpha))
+        c_reps.append(ck)
+        tail_reps.append(tk)
+        if verbose:
+            print("  split %d: per-class inflation %s" % (r + 1, np.round(ck, 2)))
+
+    if not c_reps:
+        raise ValueError("too few stands with %d+ plots to calibrate" % min_plots)
+    c = np.mean(c_reps, axis=0)
+    tail = np.mean(tail_reps, axis=0)
+
+    lo = np.clip(est.s_hat_ - c * z * sd_full, 0.0, None)
+    hi = est.s_hat_ + c * z * sd_full
+    lo = np.where(pop, lo, 0.0)
+    hi = np.where(pop, hi, np.maximum(hi, est.s_hat_ + tail))
+
+    est.interval_report_ = CalibrationReport(
+        summary=("%d%% intervals: a bootstrap-MSE Gaussian on the classes this stand actually "
+                 "tallied, inflated per class by %s as calibrated from your own plot data; a "
+                 "stratified bound and a zero floor on classes with no tally."
+                 % (int((1 - alpha) * 100), np.round(c, 2).tolist())),
+        method="hybrid-bootstrap-stratified",
+        alpha=alpha, nominal=1 - alpha,
+        inflation_per_class=c.tolist(),
+        tail_radius_per_class=tail.tolist(),
+        reps=len(c_reps), B=B,
+        populated_fraction=float(pop.mean()),
+    )
+    return lo, hi

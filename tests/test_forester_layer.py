@@ -302,3 +302,36 @@ def test_engine_data_gain_agrees_with_the_fallback(inv):
         np.asarray(exposed, float), local, rtol=1e-6, atol=1e-9,
         err_msg="engine data_gain_ disagrees with the documented gamma formula; the "
                 "reported '% from this stand's own plots' would shift on the engine swap")
+
+
+@pytest.mark.slow
+def test_hybrid_intervals_reach_nominal_on_both_strata(inv, cruise):
+    """The hybrid must hit nominal overall and on each stratum separately.
+
+    This is the construction that replaced the conformal-transfer approach, which under-covered
+    (0.64-0.84) because a threshold calibrated on a half-data fit's standardized scale does not
+    transfer when the covariance is design-based. The hybrid avoids that: the bootstrap MSE
+    transfers at close to sqrt(2), the inflation is calibrated per class from this dataset, and
+    the untallied stratum gets a bound rather than a Gaussian it cannot support.
+    """
+    from conifer.calibration import calibrated_intervals
+
+    _t, _a, _s, truth = cruise
+    T = truth.set_index("STAND").reindex(inv.stand_ids).to_numpy(float)
+    est = inv.fit()
+    alpha = 0.10
+    lo, hi = calibrated_intervals(est, alpha=alpha, B=8, reps=2, seed=3)
+
+    inside = (T >= lo) & (T <= hi)
+    pop = inv.counts > 0
+    assert lo.min() >= 0.0, "a lower bound went below the physical zero floor"
+    assert inside.mean() >= 1 - alpha - 0.04, f"overall coverage {inside.mean():.3f}"
+    assert inside[pop].mean() >= 1 - alpha - 0.06, f"populated {inside[pop].mean():.3f}"
+    assert inside[~pop].mean() >= 1 - alpha - 0.08, f"zero-tally {inside[~pop].mean():.3f}"
+
+    rep = est.interval_report_
+    c = np.asarray(rep["inflation_per_class"], float)
+    assert np.all(c > 0)
+    # the shortfall grows as tallies thin with diameter, so the upper classes need more
+    # inflation than the lower ones - independently reproduced by the simulation's mse_calib
+    assert c[-1] > c[0], f"inflation should grow with class index, got {np.round(c, 2)}"
