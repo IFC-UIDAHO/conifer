@@ -72,6 +72,13 @@ pip install "conifer-sae[app]"
 conifer-studio
 ```
 
+If your shell reports `conifer-studio: command not found` (common on Windows, where pip's
+scripts folder is often not on `PATH`), this does the same thing and never depends on `PATH`:
+
+```bash
+python -m conifer.studio
+```
+
 Upload a tree list — or press **Load the demo cruise** — and get stand tables, maps, an Excel
 workbook and a printable stand report. Everything runs on the machine you start it on, so
 proprietary inventory never leaves your network. See [`apps/forester/`](apps/forester/).

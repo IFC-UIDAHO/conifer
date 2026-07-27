@@ -12,8 +12,12 @@ printable stand report.
 
 ```bash
 pip install -r requirements.txt
-conifer-studio
+conifer-studio          # or: python -m conifer.studio
 ```
+
+`python -m conifer.studio` is worth knowing: it bypasses `PATH` entirely, which matters on
+Windows where pip installs console scripts into a folder that is frequently not on `PATH`.
+Both accept the same arguments and hand them straight to Streamlit.
 
 Then open the URL it prints. Click **Load the demo cruise** to see the whole workflow with
 no data of your own.
