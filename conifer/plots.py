@@ -230,7 +230,11 @@ def plot_map(est, gdf, *, stand_col, metric="QMD", ax=None, alpha=0.10, joint=Fa
         raise KeyError(f"{metric!r} is not available. Options: {list(tab.columns)}")
     col = col[0]
 
-    merged = attach_estimates(gdf, tab[[col]], stand_col=stand_col)
+    # gis_safe=False: attach_estimates slugs column names so they survive a shapefile or
+    # GeoPackage write ("QMD (in)" -> "qmd_in"), which is right for a file on disk and wrong
+    # here - this frame is plotted in memory and never written, and the slug would break the
+    # lookup below. Keeping the readable name also gives the colourbar a sensible label.
+    merged = attach_estimates(gdf, tab[[col]], stand_col=stand_col, gis_safe=False)
     if ax is None:
         _, ax = plt.subplots(figsize=(7.2, 6.2))
     merged.plot(column=col, ax=ax, cmap="OrRd" if metric == "uncertainty" else cmap,

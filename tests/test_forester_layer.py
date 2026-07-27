@@ -367,3 +367,57 @@ def test_demo_design_constants_match_what_make_cruise_produces():
         f"design mismatch: direct estimate is {ratio:.1f}x the truth. The demo constants no "
         f"longer describe the cruise make_cruise generates."
     )
+
+
+def test_plot_map_draws_every_metric(inv, cruise):
+    """The map must draw for each metric it offers.
+
+    This broke silently once. `attach_estimates` slugs column names so they survive a
+    shapefile write ("QMD (in)" -> "qmd_in"), which is right for a file and wrong for a frame
+    that is only plotted; `plot_map` then looked up the readable name and raised KeyError for
+    every metric. Nothing caught it because the map only runs when a polygon layer is loaded,
+    and no test loaded one. This one does.
+    """
+    gpd = pytest.importorskip("geopandas")
+    from shapely import wkt
+
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from conifer import plots as P
+
+    _t, _a, stands, _tr = cruise
+    gdf = gpd.GeoDataFrame(
+        stands.drop(columns=["geometry_wkt"]),
+        geometry=stands["geometry_wkt"].apply(wkt.loads), crs="EPSG:4326",
+    )
+    est = inv.fit()
+    conifer.conformalize_holdout(est, alpha=0.10, joint=False, reps=2)
+
+    for metric in ("QMD", "total", "uncertainty"):
+        fig, ax = plt.subplots(figsize=(4, 3))
+        try:
+            P.plot_map(est, gdf, stand_col="STAND", metric=metric, ax=ax)
+        finally:
+            plt.close(fig)
+
+
+def test_gis_export_still_slugs_names(inv, cruise):
+    """Plotting keeps readable names, but anything written to disk must not."""
+    gpd = pytest.importorskip("geopandas")
+    from shapely import wkt
+
+    from conifer import report as R
+
+    _t, _a, stands, _tr = cruise
+    gdf = gpd.GeoDataFrame(
+        stands.drop(columns=["geometry_wkt"]),
+        geometry=stands["geometry_wkt"].apply(wkt.loads), crs="EPSG:4326",
+    )
+    est = inv.fit()
+    merged = conifer.attach_estimates(gdf, R.summary_table(est), stand_col="STAND")
+    joined = [c for c in merged.columns if c not in stands.columns and c != "geometry"]
+    assert joined, "nothing was joined"
+    for c in joined:
+        assert len(c) <= 10 and c == c.lower(), f"{c!r} would not survive a shapefile write"

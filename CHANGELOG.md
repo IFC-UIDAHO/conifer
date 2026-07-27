@@ -6,6 +6,22 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-07-27
+
+### Fixed
+- **The map failed to draw for every metric.** `Could not draw the map: 'QMD (in)'`, and the
+  same for total stems per acre and for uncertainty. `attach_estimates` slugs joined column
+  names so they survive a shapefile or GeoPackage write — `QMD (in)` becomes `qmd_in`, since
+  shapefiles cap field names at ten characters and reject parentheses. That is correct for a
+  file on disk and wrong for a frame that is only plotted, and `plot_map` went on to look up
+  the readable name, raising `KeyError` every time. `plot_map` now passes `gis_safe=False`;
+  exports are untouched and still get safe names.
+
+  It slipped through because the map only runs when a stand polygon layer is loaded, and no
+  test loaded one. Two tests now cover it — one asserting every metric draws, one asserting
+  that anything written to disk still gets slugged — so the two requirements cannot drift
+  apart again.
+
 ## [0.2.2] - 2026-07-27
 
 ### Fixed
