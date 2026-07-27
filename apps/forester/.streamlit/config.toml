@@ -1,11 +1,10 @@
-# CONIFER — Stand Structure Studio · native theme (applied on a clean restart).
-# The app also forces this palette via CSS so it renders correctly on hot-reload.
+# CONIFER — Stand Structure Studio · neutral-light SaaS theme.
 [theme]
 base = "light"
 primaryColor = "#2D6A4F"
-backgroundColor = "#F4F2EA"
-secondaryBackgroundColor = "#FBFAF6"
-textColor = "#15281C"
+backgroundColor = "#FAFAF9"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#18181B"
 
 [client]
 toolbarMode = "minimal"

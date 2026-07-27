@@ -6,6 +6,18 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-07-27
+
+Documentation and packaging only. No change to the estimator, the calibration, or any reported
+number; the API is identical to 0.2.4.
+
+### Changed
+- The PyPI version badge now reads the live version from shields.io rather than a hardcoded
+  string, so it can no longer fall a release behind. (0.2.4 shipped a README still badged 0.2.3.)
+- `CITATION.cff` is synced to the released version (was left at 0.2.3 through the 0.2.4 release).
+- The getting-started vignette was re-executed against this release, so its printed version
+  banner and outputs match the shipped package rather than the 0.2.0 run it carried.
+
 ## [0.2.4] - 2026-07-27
 
 ### Changed
