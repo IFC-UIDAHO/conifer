@@ -6,6 +6,19 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-07-28
+
+Docs and packaging only. No change to the estimator, the calibration, or any reported number.
+
+### Added
+- **A 60-second, zero-code tour** at the top of the README: an inline highlight loop
+  (`docs/media/conifer-money.gif`) linked to the full screencast (`docs/media/conifer-demo.mp4`,
+  with a poster), walking `pip install "conifer-sae[app]"` → `conifer-studio` → Load the demo
+  cruise → the CONIFER-vs-direct result → measured coverage. Built from the real retuned demo
+  output, not a mock-up.
+- A **Preview Release** notice at the top of the README (visible on the PyPI project page), noting
+  that APIs may change before the first stable 1.0.
+
 ## [0.2.7] - 2026-07-27
 
 The demo cruise, retuned. `conifer.demo` now generates a silviculturally plausible, *stocked*

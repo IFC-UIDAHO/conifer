@@ -10,7 +10,7 @@
 <p align="center">
   <a href="https://pypi.org/project/conifer-sae/"><img src="https://img.shields.io/pypi/v/conifer-sae?color=orange&label=pypi" alt="PyPI"></a>
   <img src="https://img.shields.io/badge/python-3.9--3.12-blue" alt="Python 3.9-3.12">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-2D6A4F.svg" alt="License: MIT"></a>
+  <a href="https://github.com/IFC-UIDAHO/conifer/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-2D6A4F.svg" alt="License: MIT"></a>
   <a href="https://github.com/IFC-UIDAHO/conifer/actions/workflows/tests.yml"><img src="https://github.com/IFC-UIDAHO/conifer/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
   <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black"></a>
 </p>
@@ -23,6 +23,14 @@ Design-aware small-area estimation of forest structure as *distributions*, not j
 CONIFER estimates the **diameter distribution** — stem density split across DBH classes — for
 small forest areas where the field sample is too thin for a reliable direct estimate, and it
 attaches an honest, *checked* statement of uncertainty.
+
+<p align="center">
+  <a href="https://youtu.be/IR-qZSbJnhM" title="Watch the 60-second, zero-code tour">
+    <img src="https://raw.githubusercontent.com/IFC-UIDAHO/conifer/main/docs/media/conifer-money.gif" alt="CONIFER vs a field-only estimate on a 2-plot stand" width="72%">
+  </a>
+  <br>
+  <em>▶ <a href="https://youtu.be/IR-qZSbJnhM">Watch the 60-second, zero-code tour</a> — from <code>pip install</code> to a checked stand report, no code.</em>
+</p>
 
 For a stand *i* the target is the whole stand table `s_i = N_i · p_i`: a **total** density `N_i`
 (stems per acre) times a **composition** `p_i` — the shares across DBH classes, a point on the
@@ -100,7 +108,7 @@ python -m conifer.studio
 Upload a tree list — or press **Load the demo cruise** — and get stand tables, maps, an Excel
 workbook and a printable stand report, with a per-stand *"% from your own plots"* readout so you can
 see how far each estimate was borrowed. Everything runs on the machine you start it on, so
-proprietary inventory never leaves your network. See [`apps/forester/`](apps/forester/).
+proprietary inventory never leaves your network. See [`apps/forester/`](https://github.com/IFC-UIDAHO/conifer/tree/main/apps/forester).
 
 ## Validated across four regions and a simulation
 
@@ -376,4 +384,4 @@ Rocky Mountain Research Station.
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE).
+MIT. See [`LICENSE`](https://github.com/IFC-UIDAHO/conifer/blob/main/LICENSE).
