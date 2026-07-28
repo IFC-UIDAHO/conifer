@@ -15,6 +15,10 @@
   <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black"></a>
 </p>
 
+> ⚠️ **Preview Release**
+>
+> CONIFER is under active development. APIs may change before the first stable 1.0 release.
+
 Design-aware small-area estimation of forest structure as *distributions*, not just totals.
 CONIFER estimates the **diameter distribution** — stem density split across DBH classes — for
 small forest areas where the field sample is too thin for a reliable direct estimate, and it
