@@ -27,10 +27,12 @@ Three things, and only the first is mandatory:
 | **stand metrics** | one row per stand — LiDAR / spectral / terrain predictors |
 | **stand polygons** | optional; turns the results into maps |
 
-The demo cruise is calibrated to the measured shape of the St. Joe (Idaho) inventory —
-regeneration-dominated, a steep reverse-J, and heavily zero-inflated in the upper diameter
-classes. That last property matters more than it looks: most stands genuinely tally **nothing**
-in the larger classes, and an estimator that ignores this will quietly invent trees.""")
+The demo cruise is a synthetic but silviculturally realistic stocked Inland-Northwest
+mixed-conifer inventory — stands range from dense small-tree regeneration to open, large-tree
+old growth, and the larger diameter classes are absent from many stands. That last property
+matters more than it looks: those stands genuinely tally **nothing** in the larger classes, and
+an estimator that ignores this will quietly invent trees. By default the cruise is *sparse* —
+2–3 plots per stand, the thin-sample regime small-area estimation is built for.""")
 
 co("""import numpy as np, pandas as pd, conifer
 pd.set_option("display.width", 150)
@@ -187,12 +189,14 @@ streamlit run apps/forester/app.py
 
 ### What this demo does and does not show
 
-It exercises the **workflow** on data shaped like a real cruise, and it checks that the
-intervals hold up. It is **not** evidence of accuracy: at ~20 plots per stand this is the
-data-rich regime, where a Fay–Herriot estimator is supposed to converge to the direct estimate
-rather than beat it, and the synthetic covariates carry less signal than real LiDAR. CONIFER's
-accuracy claim rests on the St. Joe (Idaho) and Arkansas studies against real cruises, where
-the covariates are real and the merchantable tallies are genuinely thin.""")
+It exercises the **workflow** on plausibly-shaped data and checks that the intervals hold up.
+In its default **sparse** regime — 2–3 plots per stand — CONIFER beats the design-direct
+estimator by ~10–15% on the merchantable classes, the same thin-sample gain the real studies
+measure; switch to `make_cruise(regime="rich")` and, with ~20 plots per stand, it converges to
+the direct estimate instead, as a Fay–Herriot estimator should. Either way the numbers are
+**simulated** — this is not evidence of accuracy. CONIFER's accuracy claim rests on the St. Joe
+(Idaho) and Arkansas studies against real cruises, where the covariates are real and the
+merchantable tallies are genuinely thin.""")
 
 nb["cells"] = C
 nb.metadata.kernelspec = {"display_name": "Python 3", "language": "python", "name": "python3"}

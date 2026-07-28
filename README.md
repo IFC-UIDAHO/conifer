@@ -20,9 +20,19 @@ CONIFER estimates the **diameter distribution** — stem density split across DB
 small forest areas where the field sample is too thin for a reliable direct estimate, and it
 attaches an honest, *checked* statement of uncertainty.
 
-Under the hood it is a **compositional area-level Fay–Herriot** estimator with a cross-fitted,
-one-step-**debiased machine-learned mean** and **design-aware conformal prediction sets on the
-simplex**. It reduces exactly to classical Fay–Herriot when the mean is linear.
+For a stand *i* the target is the whole stand table `s_i = N_i · p_i`: a **total** density `N_i`
+(stems per acre) times a **composition** `p_i` — the shares across DBH classes, a point on the
+simplex. That is three hard problems at once, and no prior small-area method handles them together:
+
+- the response is **compositional** (shares that sum to one, with a nonlinear link to canopy structure),
+- the large-diameter tail is **structurally zero** (many stands genuinely tally *nothing* above 15–20″), and
+- the stands you care about are **data-poor** (a handful of plots, sometimes none).
+
+Under the hood CONIFER is a **compositional area-level Fay–Herriot** estimator with a cross-fitted,
+one-step-**debiased machine-learned mean**, a **zero-robust hurdle** for the empty tail, an analytic
+**design-based sampling covariance**, and **design-aware conformal prediction sets on the simplex**.
+It **reduces exactly to classical Fay–Herriot** when the mean is linear (verified ratio 1.0002), so
+the familiar estimator is a special case, not a competitor.
 
 ```bash
 pip install conifer-sae
@@ -84,8 +94,68 @@ python -m conifer.studio
 ```
 
 Upload a tree list — or press **Load the demo cruise** — and get stand tables, maps, an Excel
-workbook and a printable stand report. Everything runs on the machine you start it on, so
+workbook and a printable stand report, with a per-stand *"% from your own plots"* readout so you can
+see how far each estimate was borrowed. Everything runs on the machine you start it on, so
 proprietary inventory never leaves your network. See [`apps/forester/`](apps/forester/).
+
+## Validated across four regions and a simulation
+
+CONIFER was not tuned on one dataset. The full pipeline was developed on the Idaho origin region and
+then **independently replicated, refit from scratch, on three Southeastern ownerships** — a
+deliberate test of whether it generalizes rather than overfits where it was born. A design-based
+Monte-Carlo simulation with a *known truth* backs the empirical ordering and hardened the estimator.
+
+| Region | Forest type | Stands | Field vs CONIFER (sparse) | Notes |
+|---|---|---|---|---|
+| **St. Joe, Idaho** (origin) | Inland-NW mixed conifer | 375 | **+18%** better than direct | 3D-NAIP, FIA-coherent, external transfer test |
+| **Arkansas** (AOI1) | Loblolly pine plantation | 449 | **+14%** better than direct | wins the competitor shootout; produced the adequacy gate |
+| **Mississippi** (AOI3) | Loblolly pine plantation | 46 | direct wins (small, plot-rich) | the *honest counter-case*; still wins on distribution shape |
+| **South Carolina** (AOI2) | Loblolly pine plantation | 33 | **+18%** better than direct | degenerate tail crashed three competitors; CONIFER ran on all |
+
+**St. Joe, Idaho — the origin study.** ~50,000 trees on 375 industrial stands, wall-to-wall 3D-NAIP
+canopy metrics, benchmarked against design-based FIA. In the sparse regime (1–2 plots per stand)
+CONIFER cuts log-density RMSE from the direct estimator's **1.517 to 1.239 (+18%,** Holm-corrected
+p ≈ 0), and for never-sampled stands from 2.017 to **1.412 (+30%)**. On merchantable stems (≥ 5″) the
+quadratic-mean-diameter EBLUP beats direct by **+20%**. It leads a broad competitor slate — kNN,
+Weibull, MERF, SAEforest, BART-FH, a Dirichlet-multinomial, a spatial Fay–Herriot, KBAABB, and a
+multivariate FH on raw densities — and against that raw multivariate FH the **compositional** treatment
+is decisive (1.229 vs 1.475, p < 0.001), i.e. the simplex geometry, not just "more covariates," is the
+source of the gain. The estimate stays coherent with the design-based FIA totals it rolls up to
+(461 vs 524 stems/acre, ≥ 2″ composition Aitchison distance 0.36). An external transfer to Moscow
+Mountain — a different ownership 50 miles away — is reported honestly as *moderate* (Hellinger 0.30),
+which is the limit a canopy-surface sensor should have.
+
+**The Southeastern regions — a different forest, refit from scratch.** Arkansas (Bradley–Drew, 96%
+loblolly), Mississippi (Meridian, mature + young-clearcut loblolly) and South Carolina (Greenwood,
+young loblolly with a near-empty large-diameter tail) are FIA-benchmarked loblolly-pine plantations —
+ecologically the opposite of Inland-NW conifer. Refit on each, CONIFER **wins or ties the
+real-competitor shootout** (first in Arkansas and South Carolina, a close second on RMSE in
+Mississippi while winning on distribution *shape*), delivers valid conformal coverage everywhere
+(0.90–0.94), and in South Carolina simply **kept running on the degenerate tail that made BART-FH,
+hierarchical BART-FH and a Dirichlet-multinomial crash** — "the crashes are the finding." Mississippi
+is included precisely because it is the case where the direct estimate wins: a small, plot-rich,
+homogeneous population where small-area borrowing has little to add, and CONIFER *does not
+manufacture an advantage the sample size doesn't support*.
+
+**What is intrinsic vs what you recalibrate.** Across all three Southern regions the single
+load-bearing capability is the **zero-robust compositional hurdle** — removing it inflates error by
+**+117% / +160% / +308%**, by far the largest effect of any component, and it is *species-agnostic*:
+it is exactly what a degenerate large-diameter tail needs, whether the tail is Idaho conifer or
+Carolina pine. What must be **calibrated per region, never transferred**, is the adequacy-gate
+threshold (τ\* = 1 / 3 / 5 across the three regions) and the plot-density convention. Bolting on
+spatial or regeneration structure did *not* help (neutral to harmful); CONIFER borrows strength
+through covariates and the gate, not through region-specific machinery. That is the honest reason the
+method travels: the transferable core is geometry, not an Idaho-shaped default model.
+
+**The simulation.** Eleven populations — eight forest archetypes spanning young plantation, mixed
+conifer, uneven-aged reverse-J, bimodal and old-growth, plus three *plasmode* populations built from
+the **real** Arkansas/Mississippi/South Carolina LiDAR covariate matrices — sampled at 1–25 plots per
+stand over 200 replicates against a known truth. CONIFER has the lowest log-density RMSE in **all
+eight archetypes** (by 0.11–0.27), and its conformal joint coverage holds at **0.90–0.91 across every
+sampling intensity** where the analytic Gaussian interval collapses on the zero tally tail. The
+simulation also surfaced and fixed a real failure mode (see *Honest limitations*): the v0.2 estimator
+now provably **converges to the direct estimate as plots accumulate**, keeping the sparse-regime gain
+while deferring correctly when the data are rich.
 
 ## About the uncertainty
 
@@ -95,35 +165,70 @@ Two things here are worth stating plainly, because both are easy to get wrong.
 is known. A real inventory never has one. Calibrating against the design-direct estimate of the
 *same* plots looks reasonable and is **invalid**: CONIFER's estimate is a shrinkage *of* that
 estimate, so the residual is mechanically smaller than the true error — measured against a known
-truth it under-covers at 68% for a nominal 90% set. `conformalize_holdout()` instead splits each
-stand's *plots* in two, fits on one half and calibrates against the other. Independent by
-construction, and it errs wide rather than narrow.
+truth it under-covers (0.68 for a nominal 0.90 set; and a naive Gaussian box under-covers *jointly* at
+0.475 against nominal 0.95). `conformalize_holdout()` instead splits each stand's *plots* in two, fits
+on one half and calibrates against the other. Independent by construction, and it errs wide rather
+than narrow.
 
-**Per-class by default.** For any one diameter class you name, the reported interval contains the
-truth at the stated rate. That is the question a forester actually asks, and it is several times
+**Per-class by default, joint on request.** For any one diameter class you name, the reported interval
+contains the truth at the stated rate — the question a forester actually asks, and several times
 narrower than a set guaranteed to contain *all* classes at once. Pass `joint=True` for the
 simultaneous claim; every table and figure states which of the two it is reporting.
 
-**Tallied and untallied classes are different problems.** `calibrated_intervals()` builds a
-Gaussian interval on the parametric bootstrap MSE for classes a stand actually tallied, inflated
-per class by a factor calibrated from your own plot splits, and gives classes with no tally a
-stratified bound and a physical zero floor instead. No Gaussian works at the zero boundary
-whatever its standard deviation. Measured against a known truth on a cruise shaped like the real
-St. Joe inventory, at a nominal 90%:
+**The set is checked against a known truth, and it holds.** Measured on the St. Joe study, the
+design-aware minimum-volume conformal set achieves **joint five-class coverage 0.946 at a nominal
+0.95** — versus **0.475** for a Gaussian box on the same data — and an independent audit reproduced it
+at 0.944. It is **20% tighter** than that Gaussian box at matched validity, and the zero-robust
+log-ratio shrinks it by a further ~80% at unchanged coverage. Coverage holds *conditionally* too
+(SD 0.032 across canopy strata), not just on average. Across the three Southeastern regions the joint
+conformal coverage is **0.897–0.935** (target 0.90), while the analytic Gaussian box on a common joint
+basis collapses to 0.33–0.60 — so the conformal set is *necessary*, not merely preferable.
 
-| | measured coverage |
-|---|---|
-| overall | **0.946** |
-| classes the cruise tallied | 0.969 |
-| classes with no tally | 0.927 |
+**Why conformal, not the analytic MSE.** The analytic (plug-in or double-bootstrap) MSE is honestly
+**anti-conservative — it recovers only about half of the empirical error**, most severely for
+regeneration. So CONIFER reports the *conformal* set as its operational uncertainty statement, and
+`coverage_check()` measures realised coverage on held-out plots and hands it back in a sentence you
+can put in front of a client. On the classes anyone acts on, the interval runs about ±90% of the
+estimate; read the near-empty tail classes in stems per acre, not percent, where the denominator is
+near zero and a percentage reads alarmingly and means little.
 
-Deliberately a little above nominal, not on it: a calibration tuned to hit 90% exactly on one
-forest will not hold on the next. On the classes anyone acts on the interval runs about ±90% of
-the estimate. Read the untallied classes in stems per acre rather than percent — the denominator
-there is near zero, so a percentage reads alarmingly and means very little.
+## Geographic and forest-type scope
 
-Both claims are checked, not asserted: `coverage_check()` measures realised coverage on held-out
-plots and reports it in a sentence you can put in front of a client.
+CONIFER carries the University of Idaho / Intermountain Forestry Cooperative provenance, and it is
+fair to ask whether it is therefore locked to Pacific/Inland-Northwest conifers. It is not — but the
+distinction matters, so here it is plainly:
+
+- **It is a *method* you refit on your own cruise, not a frozen pretrained model.** Every region above
+  was fit from scratch on its own field data. There are no Idaho-baked coefficients shipped as a
+  default that would mis-fire elsewhere.
+- **The validated envelope** is Inland-Northwest **mixed conifer** *and* Southeastern **loblolly-pine
+  plantations** — two very different systems. The capability that carries the method (the zero-robust
+  compositional geometry) is species-agnostic.
+- **What you recalibrate locally** is the adequacy-gate threshold and the plot-density convention
+  (both are per-dataset and audited every time), plus, of course, the fit itself against your plots.
+- **What is not yet validated:** **hardwood and mixed-hardwood / bottomland systems.** All Southeastern
+  validation is pine plantation; no hardwood field data has been run. Treat hardwood as unproven — not
+  claimed to work, not claimed to fail.
+
+In short: the honest warning is "recalibrate the gate and audit your density convention per region,"
+not "this only works on Douglas-fir."
+
+## About the estimator (a little deeper)
+
+- **Debiased-ML mean.** The synthetic mean is a cross-fitted ensemble (random-feature ridge + a
+  gradient-boosted residual correction) with a one-step (Riesz) debiasing applied to the out-of-fold
+  mean — the discrete analogue of Neyman orthogonality. It shrinks toward the *out-of-fold* mean, which
+  is what stops a flexible learner from quietly leaking the field estimate it is meant to improve on
+  (debiasing lifts first-order coverage from 0.835 to 0.910). Honest caveat: the cross-fitted mean
+  buys a *first-order* orthogonal MSE, not a genuine second-order expansion.
+- **Total × composition.** The total `N_i` (a univariate log-scale FH) and the shares `p_i` (a
+  compositional FH in additive-log-ratio space) are estimated as two coupled models and recombined by
+  the delta method, with a structural-zero hurdle for class presence and additive benchmarking to the
+  design total.
+- **Design-aware conformal.** Split / Mondrian (group-conditional) conformal on isometric-log-ratio
+  residuals, scored by the design-and-model covariance, with the minimum-volume ellipsoid of
+  Braun et al. (2025); basis-equivariant on the simplex. Informative sampling is handled by a weighted
+  conformal product weight (covariate-shift ratio × design weight).
 
 ## Or start from matrices
 
@@ -148,8 +253,8 @@ python examples/quickstart.py
 An executed walkthrough of the path above — the tree list you have, `from_treelist` and its data
 checks, the fit, *how much of each estimate came from that stand's own plots*, calibrated
 intervals with a coverage check, the tables, your cruise beside CONIFER, and the plain-language
-narrative. Every number and figure is produced by the code above it, on a synthetic cruise
-calibrated to the measured shape of the real St. Joe inventory.
+narrative. Every number and figure is produced by the code above it, on a synthetic but
+silviculturally realistic stocked cruise.
 
 - **Notebook** (renders on GitHub): [`docs/vignettes/conifer-getting-started.ipynb`](https://github.com/IFC-UIDAHO/conifer/blob/main/docs/vignettes/conifer-getting-started.ipynb)
 - **Rendered HTML**: [open the executed vignette](https://raw.githack.com/IFC-UIDAHO/conifer/main/docs/vignettes/conifer-getting-started.html)
@@ -177,18 +282,23 @@ toggles capabilities; you don't fork the package per state.
 
 ## Why it exists (what nothing else does)
 
-Small-area estimation and conformal prediction are both mature — but not together, and not on the
-simplex, and not for forestry:
+Small-area estimation and conformal prediction are both mature — but not together, not on the
+simplex, and not for forestry. CONIFER is, to our knowledge, the **first estimator to unify in one
+engine**: (i) a compositional area-level Fay–Herriot model for the full DBH-class stem-density vector,
+(ii) a cross-fitted, one-step-debiased ML mean that provably nests the linear FH mean, (iii) a
+zero-robust hurdle for the empty tail, (iv) design-aware minimum-volume conformal sets on the simplex,
+and (v) a region-calibrated adequacy gate — validated across four regions.
 
 - **emdi / sae** (R) give area-level FH with parametric MSE, but no compositional target and no
   distribution-free prediction sets.
 - **MAPIE / crepes** (Python) give conformal prediction, but no small-area borrowing and no simplex
   geometry.
-- **rFIA / FIESTA** give design-based forest estimates, but do not model or borrow strength.
-
-CONIFER sits in that gap: **compositional SAE + design-aware conformal sets on the simplex,
-forestry-native** — and it consumes design-based FIA estimates as its benchmark rather than
-competing with them.
+- **rFIA / FIESTA** give design-based forest estimates, but do not model or borrow strength — CONIFER
+  *consumes* these as its benchmark rather than competing with them.
+- The nearest prior art — Esteban et al. (2020) compositional FH, Georgakis et al. (2025) multivariate
+  FH for volume/basal-area/height, Amaral et al. (2025) Dirichlet-HDR conformal, White et al. (2025)
+  KBAABB — each supplies one ingredient; none targets the diameter distribution with valid,
+  finite-sample, set-valued uncertainty.
 
 ## Reading the output on a prism cruise
 
@@ -208,30 +318,35 @@ Point it at three aligned CSV matrices:
 conifer fit --counts counts.csv --area area.csv --aux aux.csv --out s_hat.csv
 ```
 
-## Validation
+## Honest limitations
 
-The estimator was developed and stress-tested on the St. Joe (Idaho) cruise. On the merchantable
-diameter distribution it significantly beats the direct estimator and a broad competitor slate —
-kNN, Weibull, MERF, SAEforest, BART-FH, Dirichlet-multinomial, KBAABB and a multivariate
-Fay–Herriot — while remaining coherent with the design-based FIA totals it rolls up to. A
-design-based Monte-Carlo study on two plasmode populations reproduces the same ordering
-independently, and finds conformal coverage holding at 0.90–0.91 against a known truth across
-sampling intensities.
-
-Two things this project has been careful to state rather than bury:
+This project states its limits rather than burying them.
 
 - **CONIFER defers where it should.** As a stand accumulates plots, a Fay–Herriot estimator is
-  supposed to converge to the direct estimate rather than beat it, and it does. The gain is in
-  genuinely thin samples — which is what small-area estimation is for.
-- **The bundled demo is not evidence of accuracy.** It is calibrated to the *shape* of a real
-  cruise so the workflow and the intervals can be exercised honestly, but at ~20 plots per stand
-  it sits in the data-rich regime and its synthetic covariates carry less signal than real LiDAR.
-  `conifer.demo`'s own docstring says so. The accuracy claim rests on the Idaho and Arkansas
-  studies against real cruises.
+  supposed to converge to the direct estimate rather than beat it — and, since v0.2, it provably does.
+  The gain is in genuinely thin samples, which is what small-area estimation is *for*; on well-sampled
+  stands (as in Mississippi) the direct estimate can win, and CONIFER's adequacy gate is there to hand
+  back to it.
+- **Surface sensors are blind to the understory.** Photogrammetric (3D-NAIP) canopy metrics describe
+  the canopy top, not the sub-canopy regeneration that dominates stem counts. This is the mechanism
+  behind the 0–2″ class errors and the moderate cross-ownership transfer, and it is why canopy-
+  penetrating LiDAR or a few local calibration plots are the right remedy for a new ownership.
+- **Geography adds little here.** The estimator ties a simpler spatial Fay–Herriot within Monte-Carlo
+  noise and its residuals are spatially white, so a spatial term is not warranted on these data — a
+  parsimony result, and a ceiling on what geography alone can add.
+- **A set-efficiency gap, largely closed.** A Dirichlet-HDR conformal set (Amaral et al. 2025) is
+  tighter in principle; the zero-robust log-ratio closed ~80% of that gap, leaving a residual that is a
+  modeling choice (an equivariant ellipsoid vs a density level-set), not a defect.
+- **Where it loses:** the direct estimate wins the earth-mover (1-Wasserstein) *shape* metric, because
+  CONIFER optimizes simplex geometry, not diameter-axis transport; and hardwood systems are unvalidated.
+- **The bundled demo is synthetic.** Its default *sparse* regime (2–3 plots per stand) shows CONIFER
+  beating the direct estimate — the same thin-sample gain the real studies measure — and its *rich*
+  regime shows it converging to direct; but the numbers are simulated. `conifer.demo`'s own docstring
+  says so. The accuracy claims rest on the four real studies above, not on the demo.
 
 ## Citing this work
 
-A methodology manuscript describing the estimator is **under review**; this README will be updated
+A methodology manuscript describing the estimator is in preparation; this README will be updated
 with the citation once it is available. Until then, cite the software:
 
 ```bibtex
@@ -240,7 +355,7 @@ with the citation once it is available. Until then, cite the software:
   title   = {{CONIFER}: compositional, design-aware small-area estimation of
              forest diameter distributions},
   url     = {https://github.com/IFC-UIDAHO/conifer},
-  note    = {Methodology manuscript under review}
+  note    = {Methodology manuscript in preparation}
 }
 ```
 

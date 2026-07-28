@@ -84,15 +84,16 @@ def test_the_plot_design_default_matches_the_demo(app):
 def test_results_are_on_a_plausible_scale(app):
     """A silent design mismatch shows up as an order-of-magnitude error in the headline.
 
-    The demo truth sits near 24 stems per acre. Under the 0.2.1 defaults this metric read
-    2854.8, and nothing else on the page indicated a problem.
+    The retuned demo is a stocked stand whose mean density sits near 250-300 stems per acre.
+    Under the 0.2.1 defaults this metric read 2854.8, and nothing else on the page indicated a
+    problem, so the guard is a wide order-of-magnitude band rather than a tight value.
     """
     tpa = [m for m in app.metric if "TPA" in (m.label or "") or "TPH" in (m.label or "")]
     assert tpa, f"no density metric found; labels were {[m.label for m in app.metric]}"
     value = float(str(tpa[0].value).replace(",", ""))
-    assert 5 < value < 200, (
+    assert 50 < value < 900, (
         f"mean density reads {value}, which is not a plausible stems-per-acre figure for the "
-        f"demo cruise - suspect a plot-design or plot-size mismatch"
+        f"stocked demo cruise - suspect a plot-design or plot-size mismatch"
     )
 
 

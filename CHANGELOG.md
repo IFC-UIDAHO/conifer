@@ -6,6 +6,46 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-07-27
+
+The demo cruise, retuned. `conifer.demo` now generates a silviculturally plausible, *stocked*
+Inland-Northwest mixed-conifer cruise, and the workflow it showcases finally demonstrates the
+method's actual advantage. **No change to the estimator, the calibration, or any reported number
+from the real studies** - this release is the synthetic demo generator, the app copy, and the
+tests only. The 0.2.6 UI/safety release is untouched.
+
+### Changed
+- **The demo was essentially bare ground; now it is a stocked forest.** The old generator was
+  calibrated to a sparse figure (~19-25 stems/acre, ~4 ft2/ac basal area) that the project's own
+  audited Idaho analysis had already flagged as a units error - a per-plot mean read as a per-acre
+  density. The retuned generator produces a typical (median) stand of ~250 stems/acre, ~115 ft2/ac
+  basal area and a ~10" quadratic mean diameter, with stands ranging from dense small-tree
+  regeneration to open, large-tree old growth.
+- **The demo now shows the small-area gain honestly.** The previous demo could not: its synthetic
+  covariates were scrambled by a large random projection, so the class shares carried no learnable
+  signal and CONIFER had nothing to borrow (it ran 10-20% *worse* than the direct estimator). The
+  covariates are now driven by the same latent stand structure as the diameter distribution - as
+  real LiDAR metrics are - so there is genuine strength to borrow, and the debiased-ML mean earns
+  its place.
+- **New `regime` argument to `make_cruise`** (`"sparse"` default, or `"rich"`), with a matching
+  control in the Stand Structure Studio. In the sparse regime (2-3 plots per stand) CONIFER beats
+  the design-direct estimator by ~10-15% in merchantable-class RMSE; in the rich regime (~20 plots
+  per stand) it correctly converges to the direct estimate rather than beating it. Both stories are
+  now visible from the app.
+- **Smaller demo plots.** `DEMO_PLOT_AREA` is now 0.05 acre - a realistic small fixed plot, as in
+  the real St. Joe cruise - so the sparse regime is genuinely thin and the gain is real. The app
+  reads this constant, so its plot-size default follows automatically.
+- **Honest copy throughout.** The `conifer.demo` docstring, `REAL_TARGETS` (kept as an alias of the
+  new `DEMO_TARGETS`), and the app's demo description no longer imply the demo is calibrated to
+  reused real inventory data. They state plainly that it is synthetic, and that CONIFER's accuracy
+  claims rest on the real St. Joe and southern studies, not on this demo.
+
+### Fixed
+- The demo's per-acre summaries (TPA, basal area, QMD) are no longer an order of magnitude too low,
+  so they read as a believable working forest rather than non-forest.
+- The app smoke test's plausible-scale guard was pinned to the old ~24 TPA demo; it now bounds the
+  stocked demo's density band while still catching an order-of-magnitude plot-design mismatch.
+
 ## [0.2.5] - 2026-07-27
 
 Documentation and packaging only. No change to the estimator, the calibration, or any reported

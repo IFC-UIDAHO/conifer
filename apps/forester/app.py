@@ -251,8 +251,8 @@ def _dl(label, data, fname, mime, key=None):
 
 
 @st.cache_data(show_spinner=False)
-def _demo():
-    return conifer.demo.make_cruise(seed=7)
+def _demo(regime="sparse"):
+    return conifer.demo.make_cruise(seed=7, regime=regime)
 
 
 S = st.session_state
@@ -262,8 +262,8 @@ S.setdefault("gdf", None)
 S.setdefault("fitted", None)
 
 
-def load_demo():
-    trees, aux, stands, truth = _demo()
+def load_demo(regime="sparse"):
+    trees, aux, stands, truth = _demo(regime)
     S.trees, S.aux, S.truth_df = trees, aux, truth
     try:
         import geopandas as gpd
@@ -287,11 +287,19 @@ top_slot = st.empty()
 # ---------------------------------------------------------------------------
 with st.sidebar:
     sec("Data")
+    demo_regime_label = st.radio(
+        "Demo sampling regime",
+        ["Sparse — shows the small-area gain", "Data-rich — converges to direct"],
+        help="Only affects the demo cruise. Sparse gives 2–3 plots per stand — the thin-sample "
+             "regime where a direct per-stand estimate is too noisy and CONIFER beats it by "
+             "borrowing across stands. Data-rich gives ~20 plots per stand, where the direct "
+             "estimate is already good and CONIFER converges to it rather than beating it.")
+    demo_regime = "sparse" if demo_regime_label.startswith("Sparse") else "rich"
     if st.button("Use the demo cruise", use_container_width=True,
                  help="200 stands on a fixed-area cruise with LiDAR metrics and stand polygons — "
-                      "shaped to match a real Idaho inventory. Runs the whole workflow on realistic "
-                      "data before you point it at your own."):
-        load_demo()
+                      "a synthetic but silviculturally realistic Inland-Northwest cruise. Runs the "
+                      "whole workflow on realistic data before you point it at your own."):
+        load_demo(demo_regime)
         st.rerun()
     up_trees = st.file_uploader("Tree list — one row per tallied tree", type=["csv", "xlsx", "xls"],
                                 help="One row per tallied tree: stand id, DBH, and ideally a plot id.")
@@ -336,7 +344,7 @@ if trees is None:
     _l, _c, _r = st.columns([1, 1.1, 1])
     with _c:
         if st.button("Load the demo cruise", type="primary", use_container_width=True, key="empty_demo"):
-            load_demo()
+            load_demo(demo_regime)
             st.rerun()
         st.caption("or upload a tree list in the left panel.")
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)

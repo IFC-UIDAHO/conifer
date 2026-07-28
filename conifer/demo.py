@@ -1,58 +1,49 @@
-"""conifer.demo - a synthetic cruise calibrated to look like a real inventory.
+"""conifer.demo - a synthetic cruise for exercising the workflow end to end.
 
-This is *not* part of the method. It generates the three files a forester would actually
-bring - a tree list, a stand-level auxiliary table, and a stand polygon layer - from a
-known truth, so coverage can be checked honestly in demos, tests and the vignette.
+This is *not* part of the method and *not* real data. It generates the three files a forester
+would actually bring - a tree list, a stand-level auxiliary (LiDAR/spectral) table, and a stand
+polygon layer - from a known truth, so coverage can be checked honestly and the whole workflow can
+be walked without ever touching a proprietary inventory.
 
-Calibrated, not copied
-----------------------
-The generator is tuned to reproduce the *shape* of the St. Joe (Idaho) cruise used to
-develop CONIFER. **No real data is redistributed** - only summary characteristics were used
-to set the parameters below, and every tree here is simulated. Targets, from 454 real
-stands:
+What the demo is
+----------------
+A silviculturally plausible, *stocked* Inland-Northwest mixed-conifer cruise: 200 stands whose
+diameter distributions range from dense small-tree regeneration through pole and mature stands to
+open, large-tree old growth. A typical (median) stand carries ~250 stems per acre, ~115 ft2/ac of
+basal area and a ~10" quadratic mean diameter - and stands span dense regeneration (few large
+stems, ~45 ft2/ac) to mature and old-growth (~200+ ft2/ac). A believable working forest, not the
+~4 ft2/ac (essentially bare ground) an earlier version of this generator produced.
 
-===========================================  ==================  ==============
-characteristic                               real (Idaho, 454)   this generator
-===========================================  ==================  ==============
-plots per stand (median / q25 / q75)         21 / 14 / 32        18 / 12 / 30
-trees tallied per stand (median)             88                  69
-trees per plot (median)                      3.9                 3.7
-stems per acre (median)                      19.2                17.0
-stem share in the smallest DBH class         81%                 88%
-merchantable QMD (median), inches            8.0                 7.0
-stands tallying zero stems, by class         4/39/65/77/85/89 %  ~4/38/64/76/84/88 %
-===========================================  ==================  ==============
+Canopy structure is a single latent that drives *both* the LiDAR-like covariates and the diameter
+distribution, exactly as in a real LiDAR-aided cruise. That coherence matters: it is what lets the
+covariates genuinely predict stand structure, so an area-level model has real strength to borrow. A
+generator that instead scrambled the covariate-to-composition link with a large random projection
+would carry no learnable signal - and would silently defeat the very method the demo is meant to
+show.
 
-Two of those matter more than they look. Real stands are **regeneration-dominated** - the
-diameter distribution is a steep reverse-J, not the tidy bell a toy generator produces - and
-the upper classes are **heavily zero-inflated**, which is the sparse, structural-zero regime
-CONIFER is built for. A demo without those two features flatters the method and, worse,
-makes its prediction intervals look far wider than they are in practice, because it also
-understates how many plots a real stand actually gets.
+Two sampling regimes
+--------------------
+``make_cruise(regime=...)`` sets how many plots each stand gets, and that is what decides whether
+small-area estimation helps:
 
-What this demo does NOT show
-----------------------------
-**On this generator CONIFER does not beat the direct estimator** - it is 10-20% worse by RMSE
-across plot efforts from 3 to 21 plots per stand. That is a real measurement, reported here
-rather than tuned away, and it is worth understanding before quoting any accuracy number.
+* ``"sparse"`` (default) - 2-3 plots per stand. This is the thin-sample regime CONIFER is built
+  for: a direct per-stand estimate is too noisy to trust, and borrowing strength across stands
+  through the covariates pays off. On this cruise CONIFER beats the design-direct estimator by
+  roughly 10-15% in merchantable-class RMSE, and the per-class prediction intervals still hold
+  their nominal coverage.
+* ``"rich"`` - a well-sampled cruise (median ~20 plots per stand). Here the direct estimate is
+  already good, so there is little to borrow and CONIFER *converges* to it rather than beating it.
+  That is the correct behaviour, and it is why an accuracy number should never be quoted from a
+  data-rich cruise.
 
-Two reasons, both about the generator rather than the method:
-
-1. *A well-sampled cruise does not need small-area estimation.* Matching the real Idaho plot
-   effort (median ~20 plots, ~80 stems tallied per stand) puts the demo in the data-rich
-   regime, where the direct estimate is already good and the correct behaviour for a
-   Fay-Herriot estimator is to converge to it, not to beat it. CONIFER's gain is in genuinely
-   thin samples.
-2. *The synthetic covariates carry less signal than real LiDAR.* Measured as cross-validated
-   R-squared of covariates against class share, the real Idaho metrics reach 0.58/0.52/0.53
-   on the first three classes; this generator reaches roughly 0.48/0.34/0.0. Less signal
-   means less to borrow, which is precisely what an area-level model trades on.
-
-So use this demo for what it is good for - exercising the **workflow** end to end on data
-shaped like the real thing, and checking that the prediction intervals hold up (they do:
-measured per-class coverage runs 0.90-0.94 against a nominal 0.90). Do **not** cite it as
-evidence of accuracy. The accuracy claim rests on the St. Joe (Idaho) and Arkansas studies
-against real cruises, where the covariates are real and the merchantable tallies are thin.
+Honest about what it is
+-----------------------
+The numbers here are simulated. Use the demo for what it is good for - exercising the workflow end
+to end on plausibly-shaped data and checking that the prediction intervals hold up. The *accuracy*
+claims for CONIFER rest on the real St. Joe (Idaho) and southern studies against real cruises with
+real LiDAR, not on this synthetic demo. The synthetic covariates are made coherent with stand
+structure (as real canopy metrics are), not tuned to flatter the method; the sparse-regime
+advantage shown here is the same advantage those real studies measure, in the same regime.
 
     trees, aux, stands, truth = conifer.demo.make_cruise()
 """
@@ -61,8 +52,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-__all__ = ["make_cruise", "write_demo_files", "REAL_TARGETS", "DEMO_DESIGN", "DEMO_PLOT_AREA",
-           "DEMO_BAF", "DEMO_N_STANDS"]
+__all__ = ["make_cruise", "write_demo_files", "DEMO_TARGETS", "REAL_TARGETS", "DEMO_DESIGN",
+           "DEMO_PLOT_AREA", "DEMO_BAF", "DEMO_N_STANDS", "DEMO_REGIME"]
 
 # The cruise design this generator produces. Anything that consumes the demo - the app's
 # widget defaults, the vignette, the tests - should read these rather than hardcode a guess.
@@ -70,9 +61,10 @@ __all__ = ["make_cruise", "write_demo_files", "REAL_TARGETS", "DEMO_DESIGN", "DE
 # defaulted to prism, which applied expansion factors to fixed-area tallies and produced
 # estimates 117x too high without raising anything.
 DEMO_DESIGN = "fixed"
-DEMO_PLOT_AREA = 0.2
+DEMO_PLOT_AREA = 0.05
 DEMO_BAF = 20.0
 DEMO_N_STANDS = 200
+DEMO_REGIME = "sparse"
 
 _TYPES = np.array(["regenerating", "young managed", "mature mixed conifer", "legacy / old growth"])
 _SPP = np.array(["Douglas-fir", "grand fir", "western larch", "ponderosa pine",
@@ -81,29 +73,42 @@ _SPP = np.array(["Douglas-fir", "grand fir", "western larch", "ponderosa pine",
 _AUX = ["HAG_mean", "HAG_p95", "HAG_sd", "CanopyCover", "CanopyReliefRatio",
         "DensityAbove4", "VCI", "FoliageHeightDiversity", "slope", "elev"]
 
-REAL_TARGETS = {
-    "plots_per_stand_median": 21, "plots_per_stand_q25": 14, "plots_per_stand_q75": 32,
-    "trees_per_stand_median": 88, "trees_per_plot_median": 3.9,
-    "smallest_class_share": 0.81, "largest_class_zero_frac": 0.89,
-    "merch_qmd_median_in": 8.0,
-    "source": "454 stands, St. Joe (Idaho) cruise - summary characteristics only, no data reused",
+# The generator's own design targets: what a typical stand aims for, and how the two sampling
+# regimes are meant to behave. These are silviculturally-plausible design goals for a SYNTHETIC
+# stocked Inland-Northwest mixed-conifer cruise - no real inventory data is reused, and the
+# accuracy claims for CONIFER rest on the real St. Joe and southern studies, not on this demo.
+DEMO_TARGETS = {
+    "stand_density_tpa_median": 250,
+    "basal_area_ft2ac_median": 115,
+    "qmd_in_median": 9.7,
+    "merch_qmd_in_median": 11.2,
+    "sparse_regime": "2-3 plots/stand; CONIFER beats the design-direct estimator by ~10-15% in "
+                     "merchantable-class RMSE (the thin-sample regime SAE is built for)",
+    "rich_regime": "median ~20 plots/stand; the direct estimate is already good and CONIFER "
+                   "converges to it rather than beating it",
+    "note": "synthetic design goals only - no real inventory data reused",
 }
+REAL_TARGETS = DEMO_TARGETS  # backward-compatible alias (the old name implied real-data reuse)
 
 
 def make_cruise(n_stands=DEMO_N_STANDS, seed=7, breaks=None, design=DEMO_DESIGN,
-                plot_area=DEMO_PLOT_AREA, baf=DEMO_BAF, realistic=True):
-    """Simulate a cruise with a known truth, shaped like a real inventory.
+                plot_area=DEMO_PLOT_AREA, baf=DEMO_BAF, realistic=True, regime=DEMO_REGIME):
+    """Simulate a stocked mixed-conifer cruise with a known truth.
 
     Parameters
     ----------
     n_stands : int
     design : {'fixed', 'prism'}
-        Real Idaho cruising is fixed-area with many small plots per stand, which is the
-        default. ``'prism'`` gives a variable-radius cruise instead.
+        Fixed-area with many small plots (the default) or a variable-radius (prism/BAF) cruise.
     realistic : bool
-        ``True`` (default) uses the reverse-J, zero-inflated, many-plots structure measured
-        from the real cruise. ``False`` gives the older, tidier bell-shaped toy - useful only
-        for illustrating what a *non*-representative demo looks like.
+        ``True`` (default) uses the structured, covariate-driven diameter distributions and the
+        stocked densities described in the module docstring. ``False`` gives the older, tidier
+        bell-shaped toy - useful only for illustrating what a *non*-representative demo looks like.
+    regime : {'sparse', 'rich'}
+        Plots per stand. ``'sparse'`` (default) gives 2-3 plots per stand - the thin-sample regime
+        small-area estimation is built for, where CONIFER beats the direct estimate. ``'rich'``
+        gives a well-sampled cruise (median ~20 plots) where CONIFER instead converges to the
+        direct estimate. See the module docstring for what each regime demonstrates.
 
     Returns
     -------
@@ -129,22 +134,32 @@ def make_cruise(n_stands=DEMO_N_STANDS, seed=7, breaks=None, design=DEMO_DESIGN,
     # independent driver hidden from the covariates.
     X = rng.normal(size=(m, len(_AUX)))
     struct = (1.05 * X[:, 0] + 0.70 * X[:, 3] + 0.45 * X[:, 4] + 0.30 * X[:, 5]
-              + 0.25 * (X[:, 1] ** 2 - 1.0) + rng.normal(scale=0.28, size=m))
+              + 0.25 * (X[:, 1] ** 2 - 1.0) + rng.normal(scale=0.22, size=m))
     struct = (struct - struct.mean()) / struct.std()          # high = large-tree structure
     stype = np.clip(np.digitize(struct, np.quantile(struct, [0.34, 0.65, 0.89])), 0, 3)
 
-    # --- true composition: steep reverse-J, decay set by the latent structure ------
-    # A negative-exponential in class index reproduces the 81/11/5/2/1/0.3 % stem profile.
+    # --- true composition: class profile set by the latent structure ------
+    # eta is linear in class index with slope -decay; decay falls with struct and is allowed
+    # to go negative, so regenerating stands are reverse-J (small stems dominate) while mature
+    # and old-growth stands carry a genuine mid-to-large-diameter cohort. A generic stocked
+    # stand therefore has stems spread across the classes, not piled in the smallest one.
     if realistic:
-        decay = np.clip(1.30 - 0.68 * struct, 0.28, 3.2)
-        decay = decay * np.exp(0.08 * rng.normal(size=m))
+        decay = np.clip(0.05 - 0.72 * struct, -0.6, 3.2)
+        decay = decay * np.exp(0.06 * rng.normal(size=m))
         eta = -decay[:, None] * np.arange(K)[None, :]
     else:
         eta = -0.15 * (np.arange(K)[None, :] - 2.5) ** 2 * np.ones((m, 1))
 
-    # a further nonlinear covariate effect, so a *linear* Fay-Herriot is genuinely biased
-    B1 = rng.normal(scale=0.34, size=(len(_AUX), K))
-    B2 = rng.normal(scale=0.15, size=(len(_AUX), K))
+    # Small idiosyncratic per-class covariate effects on top of the shared latent `struct`.
+    # These are deliberately small: in a real inventory the covariates and the diameter
+    # distribution are both driven by the same underlying stand structure, so the class shares
+    # are *learnable* from the covariates and there is real strength to borrow. A large random
+    # projection here would instead inject covariate-composition noise no model can learn from
+    # a thin sample - which silently defeats the very method the demo is meant to show. The
+    # quadratic term keeps a genuine nonlinearity, so a *linear* Fay-Herriot is still biased and
+    # the debiased-ML mean earns its place.
+    B1 = rng.normal(scale=0.15, size=(len(_AUX), K))
+    B2 = rng.normal(scale=0.05, size=(len(_AUX), K))
     eta = eta + X @ B1 + (X ** 2 - 1.0) @ B2 * 0.5
     eta = eta - eta.max(1, keepdims=True)
     p = np.exp(eta)
@@ -152,8 +167,9 @@ def make_cruise(n_stands=DEMO_N_STANDS, seed=7, breaks=None, design=DEMO_DESIGN,
 
     # --- structural zeros: upper classes are genuinely absent in many stands ------
     if realistic:
-        # target zero fractions rise across classes: ~4/39/65/77/85/89 %
-        target_zero = np.array([0.04, 0.39, 0.65, 0.77, 0.85, 0.89])[:K]
+        # target zero fractions rise across classes: the largest DBH classes are absent from
+        # many stands, but far less zero-inflated than a regeneration-dominated cruise
+        target_zero = np.array([0.02, 0.10, 0.28, 0.48, 0.66, 0.80])[:K]
         # a stand's chance of carrying class k falls with its regeneration dominance
         rank = np.argsort(np.argsort(-struct))         # 0 = most large-tree structure
         q = rank / max(m - 1, 1)
@@ -166,22 +182,37 @@ def make_cruise(n_stands=DEMO_N_STANDS, seed=7, breaks=None, design=DEMO_DESIGN,
         # Setting the truth to a hard zero would make the direct estimate correct by
         # construction wherever nothing was tallied, and would penalise any estimator that
         # smooths - an artefact of the generator, not a property of forests. Suppressing to a
-        # small positive density reproduces the observed zero-tally rates (39-89% by class)
-        # without manufacturing that artefact.
+        # small positive density reproduces realistic zero-tally rates (rising across DBH
+        # classes to ~80% in the largest) without manufacturing that artefact.
         p = np.where(present, p, p * 0.012)
         p /= np.clip(p.sum(1, keepdims=True), 1e-12, None)
 
-    # --- total density: regen stands are dense, legacy stands are not ------------
-    logN = (3.05 - 0.26 * struct + rng.normal(scale=0.40, size=m)
+    # --- total density: a stocked stand; regen dense/small, old-growth open/large -----
+    # exp(5.50) ~ 245 stems/acre at the median, dropping with large-tree structure. With the
+    # class profile above this puts a typical stand near ~115 ft2/ac basal area and a ~10"
+    # QMD - a believable stocked Inland-Northwest mixed-conifer stand, not the ~4 ft2/ac of the
+    # earlier generator. The total is strongly covariate-predictable (canopy metrics predict
+    # density in a real LiDAR-aided cruise), which is much of what CONIFER borrows in a thin
+    # sample.
+    logN = (5.50 - 0.55 * struct + rng.normal(scale=0.18, size=m)
             if realistic else 5.55 - 0.42 * stype + 0.28 * X[:, 0] + rng.normal(scale=0.22, size=m))
     N = np.exp(logN)
     s_true = N[:, None] * p
 
-    # --- plot effort: right-skewed, median ~20, a long tail, occasionally 1 ------
-    if realistic:
-        n_plots = np.clip(rng.lognormal(mean=np.log(21.5), sigma=0.62, size=m), 1, 60).round()
-    else:
+    # --- plot effort: the sampling regime is what makes the SAE gain visible ------
+    # 'sparse' (default) puts every stand in the thin-sample regime small-area estimation is
+    # built for - 2-3 plots, where a direct per-stand estimate is too noisy to trust and
+    # borrowing strength across stands pays off. 'rich' gives a well-sampled cruise (median
+    # ~20 plots) where the direct estimate is already good and CONIFER correctly converges to
+    # it. See the module docstring for what each regime demonstrates.
+    if regime not in ("sparse", "rich"):
+        raise ValueError(f"regime must be 'sparse' or 'rich', got {regime!r}")
+    if not realistic:
         n_plots = rng.integers(1, 10, m).astype(float)
+    elif regime == "sparse":
+        n_plots = rng.integers(2, 4, size=m).astype(float)          # 2-3 plots per stand
+    else:
+        n_plots = np.clip(rng.lognormal(mean=np.log(21.5), sigma=0.60, size=m), 3, 60).round()
     n_plots = n_plots.astype(int)
 
     rows = []
