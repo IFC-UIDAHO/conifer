@@ -14,8 +14,8 @@ authors:
     email: "mjaslam@uidaho.edu"
     affiliation: "University of Idaho (IFC-UIDAHO)"
     # orcid: "https://orcid.org/0000-0000-0000-0000"   # add before release
-version: "0.2.8"
-date-released: "2026-07-27"
+version: "0.2.9"
+date-released: "2026-08-06"
 license: MIT
 repository-code: "https://github.com/IFC-UIDAHO/conifer"
 url: "https://github.com/IFC-UIDAHO/conifer"

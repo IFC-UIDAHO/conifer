@@ -6,6 +6,14 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.9] - 2026-08-06
+
+Maintenance release. Version bump only; no change to the estimator, the calibration, the API, or any
+reported number since 0.2.8.
+
+### Changed
+- Version synchronized to 0.2.9 across `pyproject.toml`, `conifer/__init__.py`, and `CITATION.cff`.
+
 ## [0.2.8] - 2026-07-28
 
 Docs and packaging only. No change to the estimator, the calibration, or any reported number.
