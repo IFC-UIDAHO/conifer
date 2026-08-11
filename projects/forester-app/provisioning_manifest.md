@@ -30,7 +30,7 @@ python -m venv .venv
 .venv\Scripts\activate       # Windows; Linux: source .venv/bin/activate
 
 pip install \
-  conifer-sae==0.1.3 \
+  conifer-sae==0.3.0 \
   streamlit==1.36.0 \
   geopandas==1.0.1 \
   folium==0.17.0 \

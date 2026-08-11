@@ -53,3 +53,6 @@ through the design-based `D_ext` argument rather than inferred from cross-stand 
   design-based `D_ext`, were never affected.
 
 See the `CHANGELOG` `[0.2.0]` entry and `PSAE_work/simulation/LESSON_LEARNED_v0.2.md` for the full write-up.
+
+> **Successor:** the real-region data-rich gap this refinement leaves open is closed by the optional
+> v0.3 [support-aware deferral gate](deferral-v0.3.md).

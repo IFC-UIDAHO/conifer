@@ -85,12 +85,12 @@ class DiameterDistribution:
     HAVE_BART=_HAVE_BART
     def __init__(self, n_ensemble=6, n_hidden=64, ridge=5.0, kfold=5, hurdle=True,
                  boot_g3=120, seed=0, mean_mode='ml', crossfit=True, sigma_mode='gl',
-                 regime_adaptive=False, adequacy_n0=25.0, blend_mode='gate', sure_floor=0.35, di_correction=True, basis='alr', cf_reps=1, mse_mode='plug', debias=False, di_overdispersion=False):
+                 regime_adaptive=False, adequacy_n0=25.0, blend_mode='gate', sure_floor=0.35, di_correction=True, basis='alr', cf_reps=1, mse_mode='plug', debias=False, di_overdispersion=False, cv_defer=True, defer_c=8.0, defer_a=1.0):
         self._init_kwargs={k:v for k,v in locals().items() if k!='self'}   # full config, for faithful bootstrap refits (no stale hardcoded subset)
         self.E=n_ensemble; self.H=n_hidden; self.lam=ridge; self.K_=kfold
         self.hurdle=hurdle; self.boot=boot_g3; self.seed=seed
         self.mean_mode=mean_mode; self.crossfit=crossfit; self.sigma_mode=sigma_mode
-        self.regime_adaptive=regime_adaptive; self.adequacy_n0=adequacy_n0; self.blend_mode=blend_mode; self.sure_floor=sure_floor; self.di_correction=di_correction; self.basis=basis; self.cf_reps=cf_reps; self.mse_mode=mse_mode; self.debias=debias
+        self.regime_adaptive=regime_adaptive; self.adequacy_n0=adequacy_n0; self.blend_mode=blend_mode; self.sure_floor=sure_floor; self.di_correction=di_correction; self.basis=basis; self.cf_reps=cf_reps; self.mse_mode=mse_mode; self.debias=debias; self.cv_defer=cv_defer; self.defer_c=defer_c; self.defer_a=defer_a
         # v0.2 refinement: multinomial (vanishing) compositional sampling covariance by default so the
         # EBLUP converges to the design-direct estimate as tallies grow (fixes rich-regime over-shrinkage
         # traced to the Dirichlet-multinomial φ-floor). di_overdispersion=True restores the v0.1 DM covariance.
@@ -116,7 +116,18 @@ class DiameterDistribution:
             preds.append(Hte@Bk)
         P=np.stack(preds); return P.mean(0), P
 
-    def fit(self, counts, area_eff, X, groups=None, total_logN=None, var_logN=None, D_ext=None):
+    def _cv_deferral(self, counts, direct_dens, plots):
+        """v0.3 deferral: SUPPORT-AWARE reduce-to-direct gate. Defer to the design-direct density by
+        w_ik = [k_i/(k_i+c)] * [n_ik/(n_ik+a)]. First factor grows deferral with plot support (adequacy
+        scale c, selected on the held-out simulation); second (add-one support prior a) defers a class only
+        where the direct actually has tally, so structural-zero / low-tally classes keep the model hurdle."""
+        counts=np.asarray(counts,float); k=np.array([np.asarray(pp).shape[0] for pp in plots],float)
+        w=(k/(k+self.defer_c))[:,None]*(counts/(counts+self.defer_a))
+        self.defer_w_=w; self.defer_c_=float(self.defer_c)
+        self.s_hat_=(1-w)*self.s_hat_ + w*np.asarray(direct_dens,float)
+        self.p_hat_=self.s_hat_/np.clip(self.s_hat_.sum(1,keepdims=True),1e-9,None)
+
+    def fit(self, counts, area_eff, X, groups=None, total_logN=None, var_logN=None, D_ext=None, plots=None, direct_dens=None):
         rng=np.random.default_rng(self.seed)
         counts=np.asarray(counts,float); m,K=counts.shape; q=K-1
         Xc=(X-X.mean(0))/(X.std(0)+1e-9)
@@ -352,6 +363,15 @@ class DiameterDistribution:
         # per-stand EBLUP data-gain gamma = mean over ALR coords of Su/(Su+D_i): "% of the estimate from this
         # stand's own plots". Rises with plot effort ONLY when D is design-based (D_ext); ~flat under analytic D.
         self.data_gain_=np.array([float(np.mean(np.diag(Su)/(np.diag(Su)+np.diag(D[i])+1e-12))) for i in range(m)])
+        self.defer_w_=None; self.defer_c_=None
+        if plots is not None and getattr(self,'cv_defer',True):
+            try:
+                if direct_dens is not None:
+                    _dd=np.asarray(direct_dens,float)
+                else:
+                    _dd=np.exp(logN)[:,None]*(counts/np.clip(counts.sum(1,keepdims=True),1e-9,None))
+                self._cv_deferral(counts, _dd, plots)
+            except Exception: pass
         return self
 
     def class_intervals(self, z=1.645):

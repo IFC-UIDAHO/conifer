@@ -16,15 +16,15 @@ CompositionalFH = DiameterDistribution
 
 
 class SpeciesComposition:
-    """Planned CONIFER v0.3 — species shares as the composition.
+    """Planned CONIFER sibling — species shares as the composition.
 
     Reuses the :class:`CompositionalFH` engine with a species simplex in place of the
-    DBH classes; only the target wiring differs. Not implemented in v0.1.
+    DBH classes; only the target wiring differs. Not yet implemented.
     """
 
     def __init__(self, *args, **kwargs):  # pragma: no cover - intentional stub
         raise NotImplementedError(
-            "conifer.SpeciesComposition arrives in v0.3. The engine (CompositionalFH) "
+            "conifer.SpeciesComposition is a planned sibling. The engine (CompositionalFH) "
             "already supports a general composition; only the species-target wiring is "
             "pending. Use conifer.DiameterDistribution today."
         )

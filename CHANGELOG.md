@@ -6,6 +6,39 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-11
+
+Adds an **optional data-rich deferral** that closes the one honest gap in v0.2: in the data-rich regime the
+design-direct estimator became reliable, but v0.2 kept over-shrinking toward the model and lost accuracy to it.
+Default `fit()` behaviour is unchanged — the deferral only activates when you pass per-stand plot support, so
+every previously reported v0.2 number is identical.
+
+### Added
+- **Support-aware reduce-to-direct gate** (`DiameterDistribution`, params `cv_defer=True`, `defer_c=8.0`,
+  `defer_a=1.0`). When `fit(..., plots=<per-stand plot arrays>, direct_dens=<design-direct density>)` is
+  supplied, the deployed estimate is blended toward the design-direct density by
+  `w_ik = [k_i/(k_i+c)] · [n_ik/(n_ik+a)]`: the first factor grows the deferral as a stand's plot support grows
+  (`c` = the plot count at which model and direct get equal weight); the second is an add-one support prior that
+  defers a class only where the direct actually has tally, so structural-zero / low-tally classes keep the
+  hurdle instead of chasing a noisy or zero direct. Exposes `.defer_w_` (m×K weights) and `.defer_c_`.
+- `c=8` was selected on the held-out plasmode simulation; `a=1` is the canonical add-one constant (the
+  simulation has no structural zeros, so it cannot calibrate `a` — the prior encodes the forestry reality the
+  simulation omits).
+
+### Fixed
+- **Data-rich over-shrinkage.** With the gate, per-region log-density RMSE vs full-cruise held-out truth
+  improves in every data-rich regime (Mississippi 0.275→0.260, Arkansas 0.461→0.363, South Carolina
+  0.608→0.600 — now at the design-direct / mature-FH frontier) while every data-poor regime is preserved
+  (largest change +0.002, at noise level). Validated on both the held-out plasmode (improves at every plot
+  count) and the three real regions.
+
+### Notes
+- Backward compatible: omit `plots` → exactly v0.2. The gate reduces to v0.2 as `a→∞` and to the design-direct
+  as `k→∞` in supported classes.
+- An earlier held-out-plot cross-validation variant (STACK) was implemented and rejected: it won on the
+  simulation but failed to transfer to the real regions (over-deferred at low plot count; its CV signal
+  decoupled from truth). See `plans/V03_gate_verdict.md` for the full record.
+
 ## [0.2.9] - 2026-08-06
 
 Maintenance release. Version bump only; no change to the estimator, the calibration, the API, or any

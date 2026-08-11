@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use CONIFER, please cite it as below."
-title: "CONIFER: compositional nonlinear-debiased Fay-Herriot small-area estimation with ellipsoidal conformal regions"
+title: "CONIFER: COmpositional Nonlinear-debiased Inference, Fay–Herriot with Ellipsoidal conformal Regions"
 abstract: >-
   CONIFER is a Python package for design-aware small-area estimation of forest
   diameter distributions. It implements a compositional area-level Fay-Herriot
@@ -14,7 +14,7 @@ authors:
     email: "mjaslam@uidaho.edu"
     affiliation: "University of Idaho (IFC-UIDAHO)"
     # orcid: "https://orcid.org/0000-0000-0000-0000"   # add before release
-version: "0.2.9"
+version: "0.3.0"
 date-released: "2026-08-06"
 license: MIT
 repository-code: "https://github.com/IFC-UIDAHO/conifer"

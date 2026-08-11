@@ -1,4 +1,4 @@
-conifer-sae>=0.2.0
+conifer-sae>=0.3.0
 streamlit>=1.36
 pandas>=2.0
 numpy>=1.24

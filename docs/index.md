@@ -19,8 +19,9 @@ est.conformalize(s_truth_cal, cal_idx, joint=True).predict_interval()
 
 ## Why it exists
 
-- **Wins where small-area estimation is meant to help** — sparse, data-poor stands — and, since v0.2,
-  **converges to the design-direct estimate when data are plentiful** (Fay–Herriot consistency).
+- **Wins where small-area estimation is meant to help** — sparse, data-poor stands — and
+  **converges to the design-direct estimate when data are plentiful** (Fay–Herriot consistency; the optional
+  v0.3 support-aware deferral gate closes the residual data-rich gap on real regions).
 - **Honest uncertainty**: the analytic Gaussian interval under-covers on degenerate compositions; the
   design-aware conformal set is calibrated.
 - **Validated on four real regions** (Idaho + Arkansas, Mississippi, South Carolina) and a design-based
@@ -31,6 +32,7 @@ est.conformalize(s_truth_cal, cal_idx, joint=True).predict_interval()
 - [Installation](installation.md) — `pip install conifer-sae`
 - [Methodology](methodology.md) — the model, the estimator, the guarantees
 - [The v0.2 refinement](refinement-v0.2.md) — the sampling-covariance fix a simulation surfaced
+- [The v0.3 deferral](deferral-v0.3.md) — the support-aware reduce-to-direct gate for the data-rich regime
 - [Benchmark](benchmark.md) — a runnable known-truth benchmark
 - **Getting-started walkthrough** — `docs/vignettes/conifer-getting-started.ipynb` (rendered `.html` alongside)
 - [Citation](citation.md)

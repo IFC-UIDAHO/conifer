@@ -7,7 +7,8 @@ runs in a few seconds and reproduces the headline pattern on a synthetic populat
 ## What it shows
 
 1. **CONIFER wins in the data-poor (sparse) regime** and converges to the design-direct estimate as plots
-   accumulate — the v0.2 [sampling-covariance refinement](refinement-v0.2.md).
+   accumulate — the v0.2 [sampling-covariance refinement](refinement-v0.2.md), with the residual data-rich gap
+   on real regions closed by the optional v0.3 [support-aware deferral gate](deferral-v0.3.md).
 2. **The design-aware conformal set is calibrated** near the nominal 0.90, while the analytic Gaussian
    interval under-covers.
 

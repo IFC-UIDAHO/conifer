@@ -38,8 +38,9 @@ variance term vanishes, so classical FH is a special case, not a competitor.
 - The conformal sets are **finite-sample valid** under exchangeability within a calibration group; they are
   the honest uncertainty statement, and the package labels which guarantee (marginal vs joint) each output
   makes.
-- The point estimator **wins in the data-poor regime** and, since v0.2, **converges to the design-direct
-  estimate as plots accumulate** — see [The v0.2 refinement](refinement-v0.2.md).
+- The point estimator **wins in the data-poor regime** and **converges to the design-direct estimate as plots
+  accumulate** — the v0.2 [sampling-covariance refinement](refinement-v0.2.md), with the residual data-rich gap
+  on real regions closed by the optional v0.3 [support-aware deferral gate](deferral-v0.3.md).
 - It does **not** manufacture signal that the covariates do not carry: on homogeneous, plot-rich populations
   the design-direct estimate is already near-optimal and CONIFER correctly defers to it.
 
