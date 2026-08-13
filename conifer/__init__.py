@@ -31,6 +31,7 @@ CompositionalFH      : the reusable engine underneath it (the same object today)
 SpeciesComposition   : planned v0.3 sibling, on the same engine.
 """
 from .estimators import DiameterDistribution, CompositionalFH, SpeciesComposition
+from .adequacy import fit_gated, GatedResult, choose_learner, covariate_adequacy
 from .io import (
     Inventory,
     Issue,
@@ -49,14 +50,15 @@ from .calibration import (
     conformalize_direct,
     coverage_check,
 )
-from . import report, plots, io, calibration, demo
+from . import report, plots, io, calibration, demo, adequacy
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 __all__ = [
     "DiameterDistribution", "CompositionalFH", "SpeciesComposition",
+    "fit_gated", "GatedResult", "choose_learner", "covariate_adequacy",
     "Inventory", "Issue", "from_treelist", "from_matrices", "read_stands", "attach_estimates",
     "conformalize_holdout", "conformalize_naive", "conformalize_direct", "coverage_check",
-    "report", "plots", "io", "calibration", "demo",
+    "report", "plots", "io", "calibration", "demo", "adequacy",
     "FIA_1IN_BREAKS", "FIA_2IN_BREAKS", "DEFAULT_BREAKS_IN", "DEFAULT_BREAKS_CM",
     "__version__",
 ]

@@ -52,7 +52,7 @@ through the design-based `D_ext` argument rather than inferred from cross-stand 
   demonstrably the cause. This also explains why prism / variable-radius cruises, which always supply a
   design-based `D_ext`, were never affected.
 
-See the `CHANGELOG` `[0.2.0]` entry and `PSAE_work/simulation/LESSON_LEARNED_v0.2.md` for the full write-up.
+See the `CHANGELOG` `[0.2.0]` entry for the full write-up.
 
 > **Successor:** the real-region data-rich gap this refinement leaves open is closed by the optional
 > v0.3 [support-aware deferral gate](deferral-v0.3.md).

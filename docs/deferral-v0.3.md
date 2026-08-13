@@ -38,12 +38,12 @@ real region × regime cell tested:
 
 | region · regime | v0.2 | v0.3 | Direct | best FH |
 |---|---|---|---|---|
-| Mississippi · sparse | 0.565 | 0.559 | 0.729 | 0.617 |
-| Mississippi · rich | 0.275 | **0.260** | 0.227 | 0.233 |
-| Arkansas · sparse | 0.772 | 0.765 | 1.069 | 0.897 |
-| Arkansas · rich | 0.461 | **0.363** | 0.344 | 0.325 |
-| South Carolina · sparse | 0.913 | 0.915 | 1.361 | 0.800 |
-| South Carolina · rich | 0.608 | **0.600** | 0.794 | 0.653 |
+| Mississippi · sparse | 0.565 | 0.559 | 0.729 | 0.617 (sae.prop) |
+| Mississippi · rich | 0.275 | **0.260** | 0.227 | 0.234 (cpag051) |
+| Arkansas · sparse | 0.772 | 0.765 | 1.069 | 0.897 (cpag051) |
+| Arkansas · rich | 0.461 | **0.363** | 0.344 | 0.326 (cpag051) |
+| South Carolina · sparse | 0.913 | 0.915 | 1.361 | 1.245 (cpag051) |
+| South Carolina · rich | 0.608 | **0.600** | 0.794 | 0.717 (msae) |
 
 (log-density RMSE vs full-cruise held-out truth; worst cell SC-sparse +0.002, at noise level.) On the held-out
 plasmode the gate improves at every plot count. South Carolina is the discriminating case: its structural-zero
@@ -67,4 +67,4 @@ est.defer_w_              # (stands x classes) deferral weights actually applied
 
 Parameters live on the estimator: `DiameterDistribution(..., cv_defer=True, defer_c=8.0, defer_a=1.0)`.
 
-See the `CHANGELOG` `[0.3.0]` entry and `PSAE_work/plans/V03_gate_verdict.md` for the full record.
+See the `CHANGELOG` `[0.3.0]` entry for the full record.

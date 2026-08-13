@@ -29,5 +29,4 @@ The single-notebook benchmark is a small illustration. The full design-based Mon
 archetypes plus three plasmode populations built from real 3D-NAIP covariates**, the complete competitor
 slate (spatial FH, BART-FH, SAEforest, Dirichlet, Weibull, k-NN, global mean), and every metric (RMSE, tail
 RMSE, bias, conformal and Gaussian coverage, MSE calibration, benchmarking) across the sampling gradient —
-lives in `PSAE_work/simulation/` (`run_simulation.py`, `make_figures.py`; see `SIMULATION_DESIGN.md` and
-`LESSON_LEARNED_v0.2.md`).
+is described in the methodology manuscript (in preparation).

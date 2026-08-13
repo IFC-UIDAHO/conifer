@@ -16,7 +16,7 @@
 </p>
 
 > ⚠️ **Preview Release** — CONIFER is under active development. APIs may change before the first stable 1.0.
-> This README describes the **current release (v0.3)**; earlier versions and their results are in the git history.
+> This README describes the **current release (v0.3.1)**; earlier versions and their results are in the git history.
 
 Design-aware small-area estimation of forest structure as *distributions*, not just totals. CONIFER
 estimates the **diameter distribution** — stem density split across DBH classes — for small forest
@@ -63,19 +63,16 @@ pip install conifer-sae
 Each release fixed one honest, *measured* failure mode. The method never changed shape; it got more
 correct in the regime where it was weakest.
 
-```mermaid
-flowchart TD
-    A["<b>v0.1 — the method</b><br/>compositional area-level Fay–Herriot · debiased-ML mean<br/>zero-robust hurdle · design-aware conformal simplex sets<br/><i>validated across four regions + a known-truth simulation</i>"]
-    B["<b>v0.2 — sampling-covariance fix</b><br/>Dirichlet-multinomial φ-floor → vanishing multinomial covariance<br/>the EBLUP now converges to the design-direct as tallies grow<br/><i>fixed rich-regime over-shrinkage — on the simulation</i>"]
-    C["<b>v0.3 — support-aware deferral gate</b><br/>the real regions revealed a residual data-rich over-shrinkage<br/>w = [k/(k+8)] · [n/(n+1)] — defer only where the direct is trustworthy<br/><i>reaches the direct/FH frontier when rich; no-harm anywhere</i>"]
-    A --> B --> C
-```
+<p align="center">
+  <img src="https://raw.githubusercontent.com/IFC-UIDAHO/conifer/main/assets/evolution.png" alt="CONIFER evolution — v0.1 the method · v0.2 sampling-covariance fix · v0.3 support-aware deferral gate" width="100%">
+</p>
 
 | Version | What changed | Impact (measured) |
 |---|---|---|
-| **v0.1** | The method: compositional FH, cross-fitted debiased-ML mean, zero-robust hurdle, conformal simplex sets. | Established the estimator; won the data-poor regime and the competitor shootout across four regions. |
+| **v0.1** | The method: compositional FH, cross-fitted debiased-ML mean, zero-robust hurdle, conformal simplex sets. | Established the estimator; won the data-poor regime across four regions, and the competitor shootout where heterogeneity or a degenerate tail favors it. |
 | **v0.2** | Replaced the Dirichlet-multinomial φ-floor with a **vanishing multinomial** sampling covariance. | The EBLUP provably converges to the design-direct as tallies accumulate — removed the rich-regime over-shrinkage **the simulation** surfaced. |
 | **v0.3** | Added the **support-aware reduce-to-direct deferral gate** (`defer_c=8`, `defer_a=1`), and a fair head-to-head vs published area-level SAE. | Closes the residual data-rich over-shrinkage on the **real** regions — Mississippi **0.275 → 0.260**, Arkansas **0.461 → 0.363**, South Carolina **0.608 → 0.600** — reaching the direct / mature-FH frontier while preserving the data-poor win. Default `fit()` is byte-identical to v0.2. |
+| **v0.3.1** | Added two **auxiliary-information adequacy gates** (`fit_gated`): a learner-adequacy OOF contest (linear vs boosted-tree) and a covariate-adequacy cap. | Makes covariate (3D-NAIP) use **no-harm** — never worse than covariate-free, gains kept where the auxiliary signal is real (SC/Idaho/AR), a weak-covariate region (MS) auto-defers. Default `fit()` unchanged. |
 
 ## Start from your cruise data
 
@@ -155,7 +152,7 @@ whether it generalizes rather than overfits where it was born. A design-based Mo
 
 Beyond the "% better than direct" summary, each Southern region was run as a **fair head-to-head** against
 published area-level SAE competitors — the multivariate Fay–Herriot of `msae`, the compositional `sae.prop`
-/ Esteban family, and a tri-compositional FH — on *identical* inputs (same subsample, covariates, truth),
+/ Esteban family, and a tri-compositional FH (`cpag051`) — on *identical* inputs (same subsample, covariates, truth),
 scored as log-density RMSE against the full-cruise held-out truth. Two regimes tell different stories.
 
 In the **data-poor** regime (2–4 plots per stand) CONIFER beats the design-direct by a wide margin — the
@@ -163,9 +160,9 @@ small-area use case:
 
 | Region · data-poor | CONIFER | design-direct | best competitor FH |
 |---|---|---|---|
-| Mississippi | **0.559** | 0.729 | 0.617 |
-| Arkansas | **0.765** | 1.069 | 0.897 |
-| South Carolina | **0.915** | 1.361 | 0.800 |
+| Mississippi | **0.559** | 0.729 | 0.617 (sae.prop) |
+| Arkansas | **0.765** | 1.069 | 0.897 (cpag051) |
+| South Carolina | **0.915** | 1.361 | 1.245 (cpag051) |
 
 In the **data-rich** regime the design-direct and the mature FH become reliable, and v0.2 over-shrank
 against them. The **v0.3 support-aware gate closes that gap to the frontier** without touching the data-poor
@@ -173,9 +170,9 @@ win:
 
 | Region · data-rich | CONIFER v0.2 | **CONIFER v0.3** | design-direct | best competitor FH |
 |---|---|---|---|---|
-| Mississippi | 0.275 | **0.260** | 0.227 | 0.233 |
-| Arkansas | 0.461 | **0.363** | 0.344 | 0.325 |
-| South Carolina | 0.608 | **0.600** | 0.794 | 0.653 |
+| Mississippi | 0.275 | **0.260** | 0.227 | 0.234 (cpag051) |
+| Arkansas | 0.461 | **0.363** | 0.344 | 0.326 (cpag051) |
+| South Carolina | 0.608 | **0.600** | 0.794 | 0.717 (msae) |
 
 *(log-density RMSE vs held-out truth; lower is better.)* The gate is a single global rule,
 `w_ik = [k_i/(k_i+8)] · [n_ik/(n_ik+1)]` — a **data-adequacy** factor (defer more as plot support *k* grows)
@@ -209,7 +206,7 @@ manufacture an advantage the sample size doesn't support* — and where v0.3 now
 
 **What is intrinsic vs what you recalibrate.** Across all three Southern regions the single load-bearing
 capability is the **zero-robust compositional hurdle** — removing it inflates error by
-**+117% / +160% / +308%**, by far the largest effect of any component, and it is *species-agnostic*: exactly
+**+117% (Mississippi) / +160% (Arkansas) / +308% (South Carolina)**, by far the largest effect of any component, and it is *species-agnostic*: exactly
 what a degenerate large-diameter tail needs, whether the tail is Idaho conifer or Carolina pine. What must be
 **calibrated per region, never transferred**, is the plot-density convention (audited every time). The
 earlier per-region adequacy-gate threshold (τ\* = 1 / 3 / 5) is **superseded in v0.3** by the single global
@@ -285,8 +282,7 @@ In short: the honest warning is "audit your density convention per region," not 
 - **Debiased-ML mean.** The synthetic mean is a cross-fitted ensemble (random-feature ridge + a
   gradient-boosted residual correction) with a one-step (Riesz) debiasing applied to the out-of-fold mean — the
   discrete analogue of Neyman orthogonality. It shrinks toward the *out-of-fold* mean, which stops a flexible
-  learner from quietly leaking the field estimate it is meant to improve on (debiasing lifts first-order
-  coverage from 0.835 to 0.910). Honest caveat: the cross-fitted mean buys a *first-order* orthogonal MSE, not
+  learner from quietly leaking the field estimate it is meant to improve on (the debiasing restores first-order coverage to near its nominal level). Honest caveat: the cross-fitted mean buys a *first-order* orthogonal MSE, not
   a genuine second-order expansion.
 - **Total × composition.** The total `N_i` (a univariate log-scale FH) and the shares `p_i` (a compositional
   FH in additive-log-ratio space) are estimated as two coupled models and recombined by the delta method, with
@@ -299,6 +295,7 @@ In short: the honest warning is "audit your density convention per region," not 
   design-direct **density** by `w_ik = [k_i/(k_i+c)] · [n_ik/(n_ik+a)]` (`c = 8`, `a = 1`), so it reduces to the
   direct as plots accumulate in classes the direct supports, while the hurdle keeps structural-zero classes.
   See [`docs/deferral-v0.3.md`](https://github.com/IFC-UIDAHO/conifer/blob/main/docs/deferral-v0.3.md).
+- **Auxiliary-information adequacy gates (v0.3.1).** `fit_gated` makes covariate use *no-harm*: a learner-adequacy gate picks the mean (linear ridge vs boosted-tree) by an out-of-fold contest, and a covariate-adequacy gate caps the covariate mean by its out-of-fold trust `rho` (defers fully below a floor). Never worse than the covariate-free estimate; gains kept where the auxiliary signal is real.
 
 ## Or start from matrices
 
@@ -317,6 +314,13 @@ est = conifer.DiameterDistribution(seed=0).fit(
     plots=plots,          # list of per-stand plot arrays (supplies k and n)
     direct_dens=D,        # the design-direct class density to defer toward
 )
+
+# v0.3.1: no-harm covariate use — the gate picks the learner and caps weak covariates
+gated = conifer.fit_gated(
+    counts, area_eff, X, total_logN=logN, var_logN=vlogN,
+    adequacy_target=full_cruise_counts,   # fullest cruised data (calibrates covariate trust)
+)
+gated.s_hat_        # never worse than covariate-free; gated.rho / gated.learner explain the decision
 ```
 
 Run the minimal worked example:
@@ -398,7 +402,7 @@ conifer fit --counts counts.csv --area area.csv --aux aux.csv --out s_hat.csv
 This project states its limits rather than burying them.
 
 - **CONIFER defers where it should.** The gain is in genuinely thin samples; as plots accumulate the v0.3 gate hands accuracy back to the design-direct — which is what small-area estimation is *for*.
-- **v0.3 reaches the frontier, not past it.** In the data-rich regime CONIFER *matches* the direct and mature FH (Arkansas 0.363 vs best FH 0.325), the correct SAE target when the direct is reliable — no claim of dominance there.
+- **v0.3 reaches the frontier, not past it.** In the data-rich regime CONIFER *matches* the direct and mature FH (Arkansas 0.363 vs cpag051's 0.326), the correct SAE target when the direct is reliable — no claim of dominance there.
 - **Surface sensors miss the understory.** 3D-NAIP canopy metrics don't see sub-canopy regeneration, driving the 0–2″ errors and moderate cross-ownership transfer; canopy-penetrating LiDAR or local plots are the remedy.
 - **Geography adds little here.** A spatial Fay–Herriot ties within Monte-Carlo noise and residuals are spatially white — a spatial term isn't warranted on these data.
 - **A set-efficiency gap, largely closed.** A Dirichlet-HDR set (Amaral et al. 2025) is tighter in principle; the zero-robust log-ratio closed ~80% of the gap — a modeling choice, not a defect.

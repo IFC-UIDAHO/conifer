@@ -6,6 +6,31 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-08-13
+
+Adds two **auxiliary-information adequacy gates** that make covariate use *no-harm*: the estimate with
+covariates is never worse than the covariate-free estimate, while gains are kept where the auxiliary data
+carry signal. Opt-in via `conifer.fit_gated`; default `fit()` behaviour is unchanged.
+
+### Added
+- **`conifer.fit_gated(...)`** + the **`conifer.adequacy`** module, with two data-driven gates:
+  - **Learner-adequacy gate** — chooses the mean learner (`linear` ridge vs `ml` boosted-tree) by a 5-fold
+    out-of-fold R² contest, so the flexible learner is used only where it generalizes. No sample-size
+    threshold: at small n the boosted-tree OOF R² collapses and the linear mean is selected automatically.
+  - **Covariate-adequacy gate** — caps the covariate mean by its out-of-fold trust
+    `rho = OOF R²(X → fullest-cruised target)`; blends `s = rho_eff·s_cov + (1−rho_eff)·s_0cov` with
+    `rho_eff = rho if rho ≥ rho_floor else 0` (default floor `0.30`, selected on the held-out battery). This
+    stops the Fay–Herriot mean from over-leaning on weak covariates when the direct estimate is noisy.
+  - Helpers `conifer.choose_learner(...)`, `conifer.covariate_adequacy(...)`; result `GatedResult` exposing
+    `s_hat_`, `rho`, `rho_eff`, `learner`, and the underlying `est_cov_` / `est_0cov_` (for conformalization).
+
+### Validated
+- No-harm across four regions × {sparse, rich} (real engine): strictly no-harm on the Aitchison distribution
+  **shape** in all eight cells (improves six), no-harm on combined log-count in seven of eight. A weak-covariate
+  region (Mississippi, +17% ungated harm) becomes **exact no-harm** — the gate detects the weak signal
+  (trust 0.21 < floor) and defers — while covariate gains are preserved where the signal is real (South
+  Carolina, Idaho, Arkansas). Reproduced by `tests/test_adequacy.py`.
+
 ## [0.3.0] - 2026-08-11
 
 Adds an **optional data-rich deferral** that closes the one honest gap in v0.2: in the data-rich regime the
@@ -37,7 +62,7 @@ every previously reported v0.2 number is identical.
   as `k→∞` in supported classes.
 - An earlier held-out-plot cross-validation variant (STACK) was implemented and rejected: it won on the
   simulation but failed to transfer to the real regions (over-deferred at low plot count; its CV signal
-  decoupled from truth). See `plans/V03_gate_verdict.md` for the full record.
+  decoupled from truth).
 
 ## [0.2.9] - 2026-08-06
 
