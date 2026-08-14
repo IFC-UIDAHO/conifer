@@ -131,6 +131,10 @@ def fit_gated(counts, area_eff, X, *, groups=None, total_logN=None, var_logN=Non
     est0 = DiameterDistribution(seed=seed, mean_mode="linear", **dd_kwargs).fit(counts, area_eff, np.zeros((m, 1)), **fkw)
     if rho_eff <= 0.0:
         return GatedResult(est0.s_hat_, rho, 0.0, learner, r2_lin, r2_ml, est0, est0)
-    estc = DiameterDistribution(seed=seed, mean_mode=learner, **dd_kwargs).fit(counts, area_eff, Xs, **fkw)
+    # Deploy the SAME learner the contest used: the contest ranks ridge vs HistGradientBoosting, so when
+    # it selects the flexible learner, fit the gradient-boosted mean ('bart' -> HGB) rather than the weaker
+    # random-feature 'ml' model. Falls back to random features automatically if HGB is unavailable.
+    _fit_mode = "bart" if learner == "ml" else learner
+    estc = DiameterDistribution(seed=seed, mean_mode=_fit_mode, **dd_kwargs).fit(counts, area_eff, Xs, **fkw)
     s = rho_eff * estc.s_hat_ + (1.0 - rho_eff) * est0.s_hat_
     return GatedResult(s, rho, rho_eff, learner, r2_lin, r2_ml, estc, est0)
