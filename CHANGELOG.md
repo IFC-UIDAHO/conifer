@@ -6,6 +6,26 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-08-13
+
+Corrects the multivariate conformal set so its coverage guarantee holds in the plot-scarce regime, and
+re-expands the CONIFER acronym to match the reported set. The default prediction set (the L∞ / max-score
+band) and the public API are unchanged.
+
+### Changed
+- **`conformalize(mode='min_vol')` now estimates the ellipsoid shape on a disjoint calibration sub-fold**
+  (new default `_mv_disjoint=True`). Estimating the shape in-sample on the same residuals it scores breaks
+  score exchangeability and under-covers; the disjoint fold restores finite-sample coverage. The legacy
+  in-sample shape is retained (`_mv_disjoint=False`) for ablation only. This changes the `min_vol` set's
+  output; the default `maxscore` (L∞) band is unaffected.
+- **`conformalize_holdout` averages the ellipsoid shape across repeated splits**, so the reported
+  `(shape, threshold)` pair is mutually consistent.
+- **Documentation now presents the L∞ / max-score band as the reported set**, with the minimum-volume
+  ellipsoid as a data-rich-calibration variant that under-covers when stands per stratum are few
+  (README, methodology, calibration docstrings).
+- **Acronym: CONIFER now expands to "…Fay–Herriot with Extremal conformal Regions"** (was "Ellipsoidal"),
+  matching the featured L∞ set. The package name (`conifer-sae`) is unchanged.
+
 ## [0.3.1] - 2026-08-13
 
 Adds two **auxiliary-information adequacy gates** that make covariate use *no-harm*: the estimate with

@@ -243,8 +243,10 @@ than a set guaranteed to contain *all* classes at once. Pass `joint=True` for th
 table and figure states which of the two it is reporting.
 
 **The set is checked against a known truth, and it holds.** Measured on the St. Joe study, the design-aware
-minimum-volume conformal set achieves **joint five-class coverage 0.946 at a nominal 0.95** — versus **0.475**
-for a Gaussian box on the same data — and an independent audit reproduced it at 0.944. It is **20% tighter**
+**joint $L_\infty$ / max-score** conformal set (the featured, robustly valid band) achieves **joint five-class
+coverage 0.946 at a nominal 0.95** — versus **0.475** for a Gaussian box on the same data — and an independent
+audit reproduced it at 0.944. (A minimum-volume ellipsoid is available as a data-rich variant; with an
+in-sample shape it under-covers, so the $L_\infty$ band is the reported set.) It is **20% tighter**
 than that Gaussian box at matched validity, and the zero-robust log-ratio shrinks it by a further ~80% at
 unchanged coverage. Coverage holds *conditionally* too (SD 0.032 across canopy strata), not just on average.
 Across the three Southeastern regions the joint conformal coverage is **0.897–0.935** (target 0.90), while the
@@ -288,9 +290,11 @@ In short: the honest warning is "audit your density convention per region," not 
   FH in additive-log-ratio space) are estimated as two coupled models and recombined by the delta method, with
   a structural-zero hurdle for class presence and additive benchmarking to the design total.
 - **Design-aware conformal.** Split / Mondrian (group-conditional) conformal on isometric-log-ratio residuals,
-  scored by the design-and-model covariance, with the minimum-volume ellipsoid of Braun et al. (2025);
-  basis-equivariant on the simplex. Informative sampling is handled by a weighted conformal product weight
-  (covariate-shift ratio × design weight).
+  scored by the design-and-model covariance; basis-equivariant on the simplex. The featured joint set is the
+  **$L_\infty$ / max-score band** (robustly valid and tightest-valid; the engine default), with a
+  minimum-volume ellipsoid (Braun et al. 2025) offered as a data-rich variant that under-covers on an
+  in-sample shape. Informative sampling is handled by a weighted conformal product weight (covariate-shift
+  ratio × design weight).
 - **Support-aware deferral (v0.3).** When plot support is supplied, the deployed estimate is blended toward the
   design-direct **density** by `w_ik = [k_i/(k_i+c)] · [n_ik/(n_ik+a)]` (`c = 8`, `a = 1`), so it reduces to the
   direct as plots accumulate in classes the direct supports, while the hurdle keeps structural-zero classes.
@@ -366,7 +370,8 @@ Small-area estimation and conformal prediction are both mature — but not toget
 for forestry. CONIFER is, to our knowledge, the **first estimator to unify in one engine**: (i) a compositional
 area-level Fay–Herriot model for the full DBH-class stem-density vector, (ii) a cross-fitted,
 one-step-debiased ML mean that provably nests the linear FH mean, (iii) a zero-robust hurdle for the empty
-tail, (iv) design-aware minimum-volume conformal sets on the simplex, and (v) a **support-aware
+tail, (iv) design-aware distribution-free conformal sets on the simplex (a joint $L_\infty$ / max-score band,
+with a minimum-volume-ellipsoid variant), and (v) a **support-aware
 reduce-to-direct deferral gate** that hands back to the design-direct exactly where it is reliable — validated
 across four regions and a known-truth simulation.
 
@@ -418,7 +423,7 @@ citation once it is available. Until then, cite the software:
 @software{poolakkal_conifer,
   author  = {Poolakkal, Jaslam},
   title   = {{CONIFER}: COmpositional Nonlinear-debiased Inference, Fay–Herriot with
-             Ellipsoidal conformal Regions},
+             Extremal conformal Regions},
   url     = {https://github.com/IFC-UIDAHO/conifer},
   note    = {Methodology manuscript in preparation}
 }

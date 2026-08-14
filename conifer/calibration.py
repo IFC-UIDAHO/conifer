@@ -55,10 +55,14 @@ Two efficiency fixes were tried and **rejected**, recorded here so they are not 
    0.75 at nominal 90% and 0.42 at nominal 80%. Marginal calibration does not give joint
    validity, and a single favourable seed made it look as though it might.
 
-What *does* help, modestly: at the 90% level the **minimum-volume simplex ellipsoid**
-(``mode='min_vol'``) is about 27% tighter than the L-infinity band at equal or better joint
-coverage (0.983 vs 0.976 over three cruises). At 80% the ordering reverses. Evidence so far
-is three simulated cruises, which is not enough to change the default on.
+On the choice of set shape: the **L-infinity max-score band** is the default and the set we
+report, because it needs no estimated shape and so keeps finite-sample coverage. The
+**minimum-volume simplex ellipsoid** (``mode='min_vol'``) can look tighter on a small demo
+(about 27% at the 90% level over three simulated cruises), but its shape matrix must be
+estimated: when that shape is fit in-sample the set **under-covers** (joint coverage 0.83 on the
+Idaho cruise), and estimating it on a disjoint calibration fold restores coverage only at a large
+cost in width when stands per stratum are few. It is therefore not reliably tighter than the
+L-infinity band in the plot-scarce regime, and is offered only for calibration-rich settings.
 
 Known limitation: threshold transfer under a design-based covariance
 -------------------------------------------------------------------
@@ -330,6 +334,12 @@ def conformalize_holdout(
         keys = set().union(*[set(t._mv_tau) for t in thresholds])
         ref._mv_tau = {k: float(np.mean([t._mv_tau[k] for t in thresholds if k in t._mv_tau]))
                        for k in keys}
+        # Average the shape across splits as well, so the reported (shape, tau) pair stays
+        # mutually consistent: with the disjoint-fold construction each split's tau is calibrated
+        # under that split's shape, and taking rep-0's shape with an averaged tau would mismatch them.
+        ref._mv_Sig = {k: np.mean([t._mv_Sig[k] for t in thresholds if k in getattr(t, "_mv_Sig", {})],
+                                  axis=0) for k in keys}
+        ref._mv_Sinv = {k: np.linalg.inv(S) for k, S in ref._mv_Sig.items()}
     elif joint:
         keys = set().union(*[set(t.conf_joint_) for t in thresholds])
         ref.conf_joint_ = {k: float(np.mean([t.conf_joint_[k] for t in thresholds

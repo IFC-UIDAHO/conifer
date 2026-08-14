@@ -24,9 +24,11 @@ $$
    $n/(n+8)$, handles classes that are genuinely absent (no sawtimber in a regen stand) — the regime where a
    plain Gaussian FH degrades.
 4. **Uncertainty.** A second-order, ML-aware MSE ($g_1+g_3+g_4+g_D$) is delta-transformed back to
-   stems/acre. On top of it, **design-aware conformal prediction sets** (per-class marginal, joint $L_\infty$,
-   or a minimum-volume ellipsoid) give finite-sample, group-valid coverage where the analytic interval does
-   not.
+   stems/acre. On top of it, **design-aware conformal prediction sets** give finite-sample, group-valid
+   coverage where the analytic interval does not. The featured joint object is the **$L_\infty$ / max-score
+   band** (the robustly valid, tightest-valid set, and the engine default); a per-class marginal set and a
+   minimum-volume ellipsoid are also available, the ellipsoid being a data-rich variant that under-covers when
+   its shape is estimated in-sample.
 5. **Design/model combination.** An optional **region-calibrated adequacy gate** decides, per stand, how much
    to trust the direct estimate versus the model — heuristic (`gate`) or risk-optimal self-tuning (`sure`).
 

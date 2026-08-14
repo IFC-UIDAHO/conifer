@@ -427,24 +427,52 @@ class DiameterDistribution:
         arXiv:2503.19068) minimum-VOLUME ellipsoidal joint set. For min_vol, geom='count' uses the
         standardized stems/acre residual; geom='ilr' uses the clr (Aitchison) residual so the
         minimum-volume set is BASIS-EQUIVARIANT on the simplex (Panel-7 P1-5). weights ->
-        Tibshirani(2019) density-ratio weighted quantile; Mondrian by self.groups_. Returns self."""
+        Tibshirani(2019) density-ratio weighted quantile; Mondrian by self.groups_.
+        For min_vol the shape matrix and the score quantile are estimated on DISJOINT calibration
+        sub-folds (default), which keeps the scores exchangeable and preserves finite-sample coverage;
+        self._mv_disjoint=False reverts to the in-sample shape (documented to under-cover; ablation
+        only), self._mv_shape_frac sets the shape-fold share (default 0.5). Returns self."""
         cal_idx=np.asarray(cal_idx); sd=np.sqrt(np.clip(self.s_var_,1e-12,None)); K=self.s_hat_.shape[1]
         self._conf_joint=bool(joint); self._conf_mode=mode; self._mv_geom=geom
         if joint and mode in ('min_vol','minvol','ellipsoid'):
-            # Min-volume ellipsoid. Shape matrix = calibration second-moment Sigma_g; score is the
-            # Mahalanobis distance; tau_g = weighted (1-alpha)(n+1)/n quantile. geom='ilr' makes the
-            # set basis-equivariant (clr residual is rank K-1 -> ridge-regularize Sigma).
+            # Min-volume ellipsoid (Braun et al. 2025). The shape matrix Sigma_g fixes the Mahalanobis
+            # metric and tau_g is the weighted (1-alpha)(n+1)/n score quantile. Estimating Sigma_g from
+            # the SAME residuals that are then scored makes the scores non-exchangeable and the set
+            # under-covers, so within each Mondrian group the calibration index is split into a disjoint
+            # SHAPE fold (estimates Sigma_g) and a SCORE fold (computes tau_g); the shape is thereby
+            # independent of the scored points and finite-sample validity is restored. A stratum whose
+            # own shape fold is rank-deficient borrows a pooled fold-A metric (still disjoint from its
+            # score fold). Set self._mv_disjoint=False for the legacy in-sample shape (ablation only).
             if geom=='ilr':
                 Rall=_clr_shares(self.s_hat_)-_clr_shares(s_truth_cal)
             else:
                 Rall=(self.s_hat_-s_truth_cal)/sd
+            def _ridge_cov(R):
+                nr=max(len(R),1); S=(R.T@R)/nr; return S+(1e-6*np.trace(S)/K+1e-12)*np.eye(K)
             self._mv_Sig={}; self._mv_Sinv={}; self._mv_tau={}
-            for g in np.unique(self.groups_[cal_idx]):
-                sel=cal_idx[self.groups_[cal_idx]==g]; R=Rall[sel]; n=len(sel)
-                Sig=(R.T@R)/n; Sig=Sig+(1e-6*np.trace(Sig)/K+1e-12)*np.eye(K); Sinv=np.linalg.inv(Sig)
-                scores=np.sqrt(np.clip(np.einsum('ij,jk,ik->i',R,Sinv,R),0,None))
-                w=np.ones(n) if weights is None else np.asarray(weights,float)[sel]
-                lv=min(np.ceil((1-alpha)*(n+1))/n, 1.0)
+            disjoint=bool(getattr(self,'_mv_disjoint',True))
+            sfrac=float(getattr(self,'_mv_shape_frac',0.5))
+            rng=np.random.default_rng(getattr(self,'_mv_split_seed',0))
+            grps=np.unique(self.groups_[cal_idx])
+            A_idx={}; B_idx={}
+            for g in grps:
+                sel=cal_idx[self.groups_[cal_idx]==g]; n=len(sel)
+                if disjoint and n>=2:
+                    p=rng.permutation(n); nA=min(max(int(round(sfrac*n)),1),n-1)
+                    A_idx[g]=sel[p[:nA]]; B_idx[g]=sel[p[nA:]]
+                else:
+                    A_idx[g]=sel; B_idx[g]=sel     # legacy in-sample, or a stratum too thin to split
+            Sinv_glob=np.linalg.inv(_ridge_cov(np.vstack([Rall[A_idx[g]] for g in grps])))
+            for g in grps:
+                A,B=A_idx[g],B_idx[g]
+                if disjoint and len(A)<K+1:
+                    Sinv=Sinv_glob; Sig=np.linalg.inv(Sinv_glob)       # borrow pooled fold-A metric
+                else:
+                    Sig=_ridge_cov(Rall[A]); Sinv=np.linalg.inv(Sig)
+                RB=Rall[B]; nB=len(B)
+                scores=np.sqrt(np.clip(np.einsum('ij,jk,ik->i',RB,Sinv,RB),0,None))
+                w=np.ones(nB) if weights is None else np.asarray(weights,float)[B]
+                lv=min(np.ceil((1-alpha)*(nB+1))/nB, 1.0)
                 self._mv_Sig[g]=Sig; self._mv_Sinv[g]=Sinv
                 self._mv_tau[g]=float(_weighted_quantile(scores, w, lv))
             return self

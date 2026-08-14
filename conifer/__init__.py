@@ -1,5 +1,5 @@
 """
-CONIFER - COmpositional Nonlinear-debiased Inference, Fay-Herriot with Ellipsoidal conformal Regions.
+CONIFER - COmpositional Nonlinear-debiased Inference, Fay-Herriot with Extremal conformal Regions.
 
 Design-aware small-area estimation of forest structure as *distributions*, not just totals.
 The engine is a compositional area-level Fay-Herriot with a cross-fitted, one-step-debiased
@@ -52,7 +52,7 @@ from .calibration import (
 )
 from . import report, plots, io, calibration, demo, adequacy
 
-__version__ = "0.3.1"
+__version__ = "0.3.2"
 __all__ = [
     "DiameterDistribution", "CompositionalFH", "SpeciesComposition",
     "fit_gated", "GatedResult", "choose_learner", "covariate_adequacy",

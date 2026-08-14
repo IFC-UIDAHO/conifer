@@ -27,7 +27,7 @@ st.set_page_config(
     page_title="CONIFER — Stand Structure Studio",
     page_icon="🌲", layout="wide", initial_sidebar_state="expanded",
     menu_items={"about": "CONIFER — COmpositional Nonlinear-debiased Inference, Fay–Herriot with "
-                         "Ellipsoidal conformal Regions. Robust · Compositional · Confident."},
+                         "Extremal conformal Regions. Robust · Compositional · Confident."},
 )
 
 ACCENT = "#2D6A4F"
@@ -338,7 +338,7 @@ if trees is None:
         "<div class='cf-kicker'>Robust · Compositional · Confident</div>"
         "<h1>Diameter distributions that hold up.</h1>"
         "<p><span class='cf-mono'>CONIFER</span> — COmpositional Nonlinear-debiased Inference, "
-        "Fay–Herriot with Ellipsoidal conformal Regions. Load the demo cruise to walk the whole "
+        "Fay–Herriot with Extremal conformal Regions. Load the demo cruise to walk the whole "
         "workflow on realistic data; nothing leaves this machine.</p></div>",
         unsafe_allow_html=True)
     _l, _c, _r = st.columns([1, 1.1, 1])
