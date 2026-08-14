@@ -540,9 +540,11 @@ area-level Fay–Herriot estimator that borrows strength from auxiliary covariat
    <span class="arithmatex">\(n/(n+8)\)</span>, handles classes that are genuinely absent (no sawtimber in a regen stand) — the regime where a
    plain Gaussian FH degrades.</li>
 <li><strong>Uncertainty.</strong> A second-order, ML-aware MSE (<span class="arithmatex">\(g_1+g_3+g_4+g_D\)</span>) is delta-transformed back to
-   stems/acre. On top of it, <strong>design-aware conformal prediction sets</strong> (per-class marginal, joint <span class="arithmatex">\(L_\infty\)</span>,
-   or a minimum-volume ellipsoid) give finite-sample, group-valid coverage where the analytic interval does
-   not.</li>
+   stems/acre. On top of it, <strong>design-aware conformal prediction sets</strong> give finite-sample, group-valid
+   coverage where the analytic interval does not. The featured joint object is the <strong><span class="arithmatex">\(L_\infty\)</span> / max-score
+   band</strong> (the robustly valid, tightest-valid set, and the engine default); a per-class marginal set and a
+   minimum-volume ellipsoid are also available, the ellipsoid being a data-rich variant that under-covers when
+   its shape is estimated in-sample.</li>
 <li><strong>Design/model combination.</strong> An optional <strong>region-calibrated adequacy gate</strong> decides, per stand, how much
    to trust the direct estimate versus the model — heuristic (<code>gate</code>) or risk-optimal self-tuning (<code>sure</code>).</li>
 </ol>
