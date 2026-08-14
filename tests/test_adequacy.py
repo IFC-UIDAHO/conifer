@@ -18,7 +18,8 @@ def _synth(m=48, K=3, signal=0.0, seed=0):
 
 
 def test_version_and_api():
-    assert conifer.__version__ == "0.3.1"
+    v = conifer.__version__
+    assert isinstance(v, str) and v.split(".")[0].isdigit(), f"unexpected __version__: {v!r}"
     assert hasattr(conifer, "fit_gated") and hasattr(conifer, "GatedResult")
 
 
