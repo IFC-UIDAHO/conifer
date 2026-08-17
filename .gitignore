@@ -13,6 +13,7 @@ push.sh
 assets/*
 !assets/banner.png
 !assets/banner.svg
+!assets/evolution.png
 !assets/logo.svg
 !assets/icon.svg
 !assets/favicon.svg

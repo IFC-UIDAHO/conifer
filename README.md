@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <b>CO</b>mpositional <b>N</b>onlinear-debiased <b>I</b>nference, <b>F</b>ay–Herriot with <b>E</b>llipsoidal conformal <b>R</b>egions<br>
+  <b>CO</b>mpositional <b>N</b>onlinear-debiased <b>I</b>nference, <b>F</b>ay–Herriot with <b>E</b>xtremal conformal <b>R</b>egions<br>
   <em>Robust. Compositional. Confident.</em>
 </p>
 
@@ -16,7 +16,7 @@
 </p>
 
 > ⚠️ **Preview Release** — CONIFER is under active development. APIs may change before the first stable 1.0.
-> This README describes the **current release (v0.3.1)**; earlier versions and their results are in the git history.
+> This README describes the **current v0.3 release**; earlier versions and their results are in the git history.
 
 Design-aware small-area estimation of forest structure as *distributions*, not just totals. CONIFER
 estimates the **diameter distribution** — stem density split across DBH classes — for small forest
@@ -71,8 +71,7 @@ correct in the regime where it was weakest.
 |---|---|---|
 | **v0.1** | The method: compositional FH, cross-fitted debiased-ML mean, zero-robust hurdle, conformal simplex sets. | Established the estimator; won the data-poor regime across four regions, and the competitor shootout where heterogeneity or a degenerate tail favors it. |
 | **v0.2** | Replaced the Dirichlet-multinomial φ-floor with a **vanishing multinomial** sampling covariance. | The EBLUP provably converges to the design-direct as tallies accumulate — removed the rich-regime over-shrinkage **the simulation** surfaced. |
-| **v0.3** | Added the **support-aware reduce-to-direct deferral gate** (`defer_c=8`, `defer_a=1`), and a fair head-to-head vs published area-level SAE. | Closes the residual data-rich over-shrinkage on the **real** regions — Mississippi **0.275 → 0.260**, Arkansas **0.461 → 0.363**, South Carolina **0.608 → 0.600** — reaching the direct / mature-FH frontier while preserving the data-poor win. Default `fit()` is byte-identical to v0.2. |
-| **v0.3.1** | Added two **auxiliary-information adequacy gates** (`fit_gated`): a learner-adequacy OOF contest (linear vs boosted-tree) and a covariate-adequacy cap. | Makes covariate (3D-NAIP) use **no-harm** — never worse than covariate-free, gains kept where the auxiliary signal is real (SC/Idaho/AR), a weak-covariate region (MS) auto-defers. Default `fit()` unchanged. |
+| **v0.3** | The data-rich frontier and no-harm auxiliary use: a **support-aware reduce-to-direct deferral gate** (`defer_c=8`, `defer_a=1`); two **auxiliary-information adequacy gates** (`fit_gated` — a learner-adequacy out-of-fold contest and a covariate-adequacy cap); and a coverage-correct conformal set (disjoint-fold shape estimation, with the L∞ / max-score band as the reported set). | Closes the residual data-rich over-shrinkage on the **real** regions — Mississippi **0.275 → 0.260**, Arkansas **0.461 → 0.363**, South Carolina **0.608 → 0.600** — reaching the direct / mature-FH frontier while preserving the data-poor win, and makes 3D-NAIP covariate use **no-harm** (gains kept where the auxiliary signal is real, a weak-covariate region auto-defers). Default `fit()` unchanged. |
 
 ## Start from your cruise data
 
@@ -299,7 +298,7 @@ In short: the honest warning is "audit your density convention per region," not 
   design-direct **density** by `w_ik = [k_i/(k_i+c)] · [n_ik/(n_ik+a)]` (`c = 8`, `a = 1`), so it reduces to the
   direct as plots accumulate in classes the direct supports, while the hurdle keeps structural-zero classes.
   See [`docs/deferral-v0.3.md`](https://github.com/IFC-UIDAHO/conifer/blob/main/docs/deferral-v0.3.md).
-- **Auxiliary-information adequacy gates (v0.3.1).** `fit_gated` makes covariate use *no-harm*: a learner-adequacy gate picks the mean (linear ridge vs boosted-tree) by an out-of-fold contest, and a covariate-adequacy gate caps the covariate mean by its out-of-fold trust `rho` (defers fully below a floor). Never worse than the covariate-free estimate; gains kept where the auxiliary signal is real.
+- **Auxiliary-information adequacy gates (v0.3).** `fit_gated` makes covariate use *no-harm*: a learner-adequacy gate picks the mean (linear ridge vs boosted-tree) by an out-of-fold contest, and a covariate-adequacy gate caps the covariate mean by its out-of-fold trust `rho` (defers fully below a floor). Never worse than the covariate-free estimate; gains kept where the auxiliary signal is real.
 
 ## Or start from matrices
 
@@ -319,7 +318,7 @@ est = conifer.DiameterDistribution(seed=0).fit(
     direct_dens=D,        # the design-direct class density to defer toward
 )
 
-# v0.3.1: no-harm covariate use — the gate picks the learner and caps weak covariates
+# v0.3: no-harm covariate use — the gate picks the learner and caps weak covariates
 gated = conifer.fit_gated(
     counts, area_eff, X, total_logN=logN, var_logN=vlogN,
     adequacy_target=full_cruise_counts,   # fullest cruised data (calibrates covariate trust)

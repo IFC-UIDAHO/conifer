@@ -17,7 +17,7 @@
   <text x="600" y="352" font-family="DejaVu Sans Mono, monospace" font-weight="bold" font-size="178" fill="#15281C" letter-spacing="2">conifer</text>
   <!-- subtitle -->
   <text x="606" y="424" font-family="DejaVu Sans, sans-serif" font-size="36" fill="#5A6A5F">Small area estimation for forest inventory.</text>
-  <text x="606" y="470" font-family="DejaVu Sans, sans-serif" font-size="36" fill="#5A6A5F">Fay–Herriot with nonlinear debiasing and ellipsoidal conformal regions.</text>
+  <text x="606" y="470" font-family="DejaVu Sans, sans-serif" font-size="36" fill="#5A6A5F">Fay–Herriot with nonlinear debiasing and extremal conformal regions.</text>
   <!-- install pill -->
   <rect x="606" y="516" width="476" height="62" rx="8" fill="#15281C"/>
   <text x="632" y="557" font-family="DejaVu Sans Mono, monospace" font-size="30" fill="#F4F2EA">pip install conifer-sae</text>

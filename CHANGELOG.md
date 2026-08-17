@@ -6,6 +6,24 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-08-17
+
+Deploys the stronger mean learner the adequacy gate actually selects, and re-synchronizes the release
+metadata. The default `fit()` and the public API are unchanged.
+
+### Fixed
+- **`fit_gated` now deploys the gradient-boosted (`HistGradientBoosting`) mean when the learner-adequacy
+  contest selects the flexible learner**, instead of fitting the weaker random-feature `'ml'` model. The
+  out-of-fold contest already ranked ridge against the boosted tree; the deployed fit now matches the
+  learner that won it, so a region with a genuine nonlinear canopy–size link gets the model the gate chose.
+  Where the contest selects `linear` (as on the regeneration-dominated Idaho and southern cruises), the
+  deployed estimate is unchanged.
+
+### Changed
+- Release metadata re-synchronized: `CITATION.cff` advanced to the current version (it had drifted at
+  0.3.0 through two releases), and the README acronym and version banner updated to the featured **Extremal**
+  conformal set and the consolidated **v0.3** release line.
+
 ## [0.3.2] - 2026-08-13
 
 Corrects the multivariate conformal set so its coverage guarantee holds in the plot-scarce regime, and
