@@ -93,11 +93,16 @@ class GatedResult:
     ``est_cov_`` / ``est_0cov_`` are the underlying fitted ``DiameterDistribution`` objects —
     use them for conformalization. ``rho`` is the covariate trust, ``rho_eff`` the applied
     (floored) weight, ``learner`` the mean chosen by Gate A."""
-    def __init__(self, s_hat_, rho, rho_eff, learner, r2_linear, r2_ml, est_cov_, est_0cov_):
+    def __init__(self, s_hat_, rho, rho_eff, learner, r2_linear, r2_ml, est_cov_, est_0cov_,
+                 deployed_mode_=None):
         self.s_hat_ = s_hat_
         self.rho = float(rho); self.rho_eff = float(rho_eff); self.learner = learner
         self.r2_linear = float(r2_linear); self.r2_ml = float(r2_ml)
         self.est_cov_ = est_cov_; self.est_0cov_ = est_0cov_
+        #: the mean_mode actually fitted for the deployed covariate arm ('linear' or 'bart');
+        #: 'linear' when the covariate-free fallback was returned. v0.3.4.
+        self.deployed_mode_ = deployed_mode_ if deployed_mode_ is not None else (
+            "linear" if learner == "linear" else "bart")
     @property
     def used_covariates(self): return self.rho_eff > 0.0
     def __repr__(self):
@@ -106,15 +111,21 @@ class GatedResult:
 
 
 def fit_gated(counts, area_eff, X, *, groups=None, total_logN=None, var_logN=None,
-              adequacy_target=None, rho_floor=DEFAULT_RHO_FLOOR, cv=5, seed=0, **dd_kwargs):
+              adequacy_target=None, rho_floor=DEFAULT_RHO_FLOOR, cv=5, seed=0,
+              fit_kwargs=None, **dd_kwargs):
     """Fit CONIFER with the v0.3.1 adequacy gates (see module docstring).
 
     Parameters mirror ``DiameterDistribution.fit`` plus:
       adequacy_target : (m,K) near-truth class counts/shares to calibrate covariate trust
                         (the fullest cruised data). If None, uses ``counts`` (optimistic; warns).
       rho_floor       : defer fully to the covariate-free estimate when trust < floor (default 0.30).
+      fit_kwargs      : dict of extra keyword arguments forwarded to BOTH underlying
+                        ``DiameterDistribution.fit`` calls (v0.3.4) — e.g.
+                        ``dict(D_ext=..., plots=..., direct_dens=...)`` to enable the
+                        design-based ALR covariance and the support-aware defer gate,
+                        which were previously unreachable through ``fit_gated``.
     ``mean_mode`` in ``dd_kwargs`` is ignored — the learner is chosen by Gate A.
-    Returns a :class:`GatedResult`.
+    Returns a :class:`GatedResult` (``.deployed_mode_`` gives the fitted covariate arm).
     """
     from .estimators import DiameterDistribution
     counts = np.asarray(counts, float); m, K = counts.shape
@@ -128,13 +139,17 @@ def fit_gated(counts, area_eff, X, *, groups=None, total_logN=None, var_logN=Non
     learner, rho, r2_lin, r2_ml = _contest(Xs, adequacy_target, cv, seed)
     rho_eff = rho if rho >= rho_floor else 0.0
     fkw = dict(groups=groups, total_logN=total_logN, var_logN=var_logN)
+    if fit_kwargs:
+        fkw.update(dict(fit_kwargs))
     est0 = DiameterDistribution(seed=seed, mean_mode="linear", **dd_kwargs).fit(counts, area_eff, np.zeros((m, 1)), **fkw)
     if rho_eff <= 0.0:
-        return GatedResult(est0.s_hat_, rho, 0.0, learner, r2_lin, r2_ml, est0, est0)
+        return GatedResult(est0.s_hat_, rho, 0.0, learner, r2_lin, r2_ml, est0, est0,
+                           deployed_mode_="linear")
     # Deploy the SAME learner the contest used: the contest ranks ridge vs HistGradientBoosting, so when
     # it selects the flexible learner, fit the gradient-boosted mean ('bart' -> HGB) rather than the weaker
     # random-feature 'ml' model. Falls back to random features automatically if HGB is unavailable.
     _fit_mode = "bart" if learner == "ml" else learner
     estc = DiameterDistribution(seed=seed, mean_mode=_fit_mode, **dd_kwargs).fit(counts, area_eff, Xs, **fkw)
     s = rho_eff * estc.s_hat_ + (1.0 - rho_eff) * est0.s_hat_
-    return GatedResult(s, rho, rho_eff, learner, r2_lin, r2_ml, estc, est0)
+    return GatedResult(s, rho, rho_eff, learner, r2_lin, r2_ml, estc, est0,
+                       deployed_mode_=_fit_mode)

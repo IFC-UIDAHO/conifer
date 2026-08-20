@@ -6,6 +6,21 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-08-18
+### Added
+- `fit_gated(..., fit_kwargs=...)`: forwards extra keyword arguments to both underlying
+  `DiameterDistribution.fit` calls, so the design-based ALR covariance (`D_ext`), the
+  support-aware defer gate (`plots`, `direct_dens`), and any future fit-time inputs are
+  reachable through the gated pipeline. Previously these silently could not be used with
+  the adequacy gates.
+- `GatedResult.deployed_mode_`: the mean_mode actually fitted for the deployed covariate
+  arm ('linear' or 'bart'); 'linear' when the covariate-free fallback was returned.
+  Removes the ambiguity that led ablation scripts to refit `mean_mode=g.learner`, which
+  since 0.3.3 is NOT the deployed model when the contest picks the flexible learner.
+### Notes
+- No behavioural change to any existing call: omitted `fit_kwargs` reproduces 0.3.3
+  byte-for-byte (regression-tested in tests/test_fit_gated_passthrough.py).
+
 ## [0.3.3] - 2026-08-17
 
 Deploys the stronger mean learner the adequacy gate actually selects, and re-synchronizes the release

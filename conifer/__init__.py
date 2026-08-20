@@ -52,7 +52,7 @@ from .calibration import (
 )
 from . import report, plots, io, calibration, demo, adequacy
 
-__version__ = "0.3.3"
+__version__ = "0.3.4"
 __all__ = [
     "DiameterDistribution", "CompositionalFH", "SpeciesComposition",
     "fit_gated", "GatedResult", "choose_learner", "covariate_adequacy",

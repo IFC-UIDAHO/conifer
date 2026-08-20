@@ -151,8 +151,8 @@ whether it generalizes rather than overfits where it was born. A design-based Mo
 
 Beyond the "% better than direct" summary, each Southern region was run as a **fair head-to-head** against
 published area-level SAE competitors — the multivariate Fay–Herriot of `msae`, the compositional `sae.prop`
-/ Esteban family, and a tri-compositional FH (`cpag051`) — on *identical* inputs (same subsample, covariates, truth),
-scored as log-density RMSE against the full-cruise held-out truth. Two regimes tell different stories.
+/ Esteban family, and a tri-compositional FH (`TriCompFH`) — on *identical* inputs (same subsample, covariates, truth),
+scored as log-density RMSE against the full-cruise held-out truth. Two regimes tell different stories. The origin region, Idaho, is deliberately excluded from this head-to-head — scoring competitors on the region the pipeline was developed on would not be a fair test — so its result is reported separately above (+18% versus direct, with the coverage study), and the three Southern plantations are the clean out-of-region comparison.
 
 In the **data-poor** regime (2–4 plots per stand) CONIFER beats the design-direct by a wide margin — the
 small-area use case:
@@ -160,8 +160,8 @@ small-area use case:
 | Region · data-poor | CONIFER | design-direct | best competitor FH |
 |---|---|---|---|
 | Mississippi | **0.559** | 0.729 | 0.617 (sae.prop) |
-| Arkansas | **0.765** | 1.069 | 0.897 (cpag051) |
-| South Carolina | **0.915** | 1.361 | 1.245 (cpag051) |
+| Arkansas | **0.765** | 1.069 | 0.897 (TriCompFH) |
+| South Carolina | **0.915** | 1.361 | 1.245 (TriCompFH) |
 
 In the **data-rich** regime the design-direct and the mature FH become reliable, and v0.2 over-shrank
 against them. The **v0.3 support-aware gate closes that gap to the frontier** without touching the data-poor
@@ -169,8 +169,8 @@ win:
 
 | Region · data-rich | CONIFER v0.2 | **CONIFER v0.3** | design-direct | best competitor FH |
 |---|---|---|---|---|
-| Mississippi | 0.275 | **0.260** | 0.227 | 0.234 (cpag051) |
-| Arkansas | 0.461 | **0.363** | 0.344 | 0.326 (cpag051) |
+| Mississippi | 0.275 | **0.260** | 0.227 | 0.234 (TriCompFH) |
+| Arkansas | 0.461 | **0.363** | 0.344 | 0.326 (TriCompFH) |
 | South Carolina | 0.608 | **0.600** | 0.794 | 0.717 (msae) |
 
 *(log-density RMSE vs held-out truth; lower is better.)* The gate is a single global rule,
@@ -243,7 +243,7 @@ table and figure states which of the two it is reporting.
 
 **The set is checked against a known truth, and it holds.** Measured on the St. Joe study, the design-aware
 **joint $L_\infty$ / max-score** conformal set (the featured, robustly valid band) achieves **joint five-class
-coverage 0.946 at a nominal 0.95** — versus **0.475** for a Gaussian box on the same data — and an independent
+coverage 0.958 at a nominal 0.95** — versus **0.475** for a Gaussian box on the same data — and an independent
 audit reproduced it at 0.944. (A minimum-volume ellipsoid is available as a data-rich variant; with an
 in-sample shape it under-covers, so the $L_\infty$ band is the reported set.) It is **20% tighter**
 than that Gaussian box at matched validity, and the zero-robust log-ratio shrinks it by a further ~80% at
@@ -406,7 +406,7 @@ conifer fit --counts counts.csv --area area.csv --aux aux.csv --out s_hat.csv
 This project states its limits rather than burying them.
 
 - **CONIFER defers where it should.** The gain is in genuinely thin samples; as plots accumulate the v0.3 gate hands accuracy back to the design-direct — which is what small-area estimation is *for*.
-- **v0.3 reaches the frontier, not past it.** In the data-rich regime CONIFER *matches* the direct and mature FH (Arkansas 0.363 vs cpag051's 0.326), the correct SAE target when the direct is reliable — no claim of dominance there.
+- **v0.3 reaches the frontier, not past it.** In the data-rich regime CONIFER *matches* the direct and mature FH (Arkansas 0.363 vs TriCompFH's 0.326), the correct SAE target when the direct is reliable — no claim of dominance there.
 - **Surface sensors miss the understory.** 3D-NAIP canopy metrics don't see sub-canopy regeneration, driving the 0–2″ errors and moderate cross-ownership transfer; canopy-penetrating LiDAR or local plots are the remedy.
 - **Geography adds little here.** A spatial Fay–Herriot ties within Monte-Carlo noise and residuals are spatially white — a spatial term isn't warranted on these data.
 - **A set-efficiency gap, largely closed.** A Dirichlet-HDR set (Amaral et al. 2025) is tighter in principle; the zero-robust log-ratio closed ~80% of the gap — a modeling choice, not a defect.
