@@ -36,7 +36,7 @@ from __future__ import annotations
 import warnings
 import numpy as np
 
-__all__ = ["fit_gated", "GatedResult", "choose_learner", "covariate_adequacy"]
+__all__ = ["fit_gated", "GatedResult", "choose_learner", "covariate_adequacy", "reference_reliability"]
 
 DEFAULT_RHO_FLOOR = 0.30  # selected on the held-out battery (clean gap: weak 0.20 vs signal 0.34+)
 
@@ -78,6 +78,45 @@ def _contest(Xs, adequacy_target, cv=5, seed=0):
     return learner, rho, r2_lin, r2_ml
 
 
+def reference_reliability(adequacy_target, adequacy_n):
+    """v0.3.5 — reliability lambda of the clr(reference) target under multinomial
+    within-stand sampling noise.
+
+    The Gate A/B contest scores out-of-fold prediction of a NOISY reference (the
+    fullest cruise available, not truth). Observed OOF R-squared is therefore
+    attenuated: R2_obs ~= lambda * R2_true with lambda = var(signal)/var(observed)
+    (classical errors-in-variables). This estimates lambda from multinomial theory:
+    per stand i with n_i reference trees and floored shares p_ic,
+        var(log p_hat_ic) ~= (1 - p_ic) / (n_i * p_ic),
+    mapped to the clr scale by the centering matrix G = I - J/K, and compared to the
+    empirical variance of the column-centred clr target (matching the contest metric).
+
+    Parameters
+    ----------
+    adequacy_target : (m, K) reference class counts/densities (shares are taken).
+    adequacy_n      : (m,) total reference tree count per stand.
+
+    Returns lambda in (0, 1].
+    """
+    P = np.asarray(adequacy_target, float)
+    P = P / np.clip(P.sum(1, keepdims=True), 1e-9, None)
+    P = np.clip(P, 1e-6, None)
+    n = np.clip(np.asarray(adequacy_n, float).reshape(-1), 1.0, None)
+    m, K = P.shape
+    # half-count floor for the variance formula: a class with ~zero expected tally carries
+    # ~no clr signal, and (1-p)/(n p) at a raw 1e-6 share floor would explode the estimate
+    Pv = np.clip(P, 0.5 / n[:, None], 1.0)
+    v_log = (1.0 - Pv) / (n[:, None] * Pv)                     # var of log p_hat, per cell
+    G = np.eye(K) - np.ones((K, K)) / K
+    G2 = G ** 2                                                # diag of G diag(v) G'
+    v_clr = v_log @ G2.T
+    noise = float(np.mean(v_clr))
+    Y = _clr(P); Y = Y - Y.mean(0)
+    total = max(float(Y.var()), 1e-12)
+    lam = 1.0 - noise / total
+    return float(np.clip(lam, 1e-3, 1.0))
+
+
 def choose_learner(X, adequacy_target, cv=5, seed=0):
     """GATE A + trust: returns (learner, rho, r2_linear, r2_ml) from the OOF-CV contest."""
     return _contest(_standardize(X), adequacy_target, cv, seed)
@@ -111,7 +150,8 @@ class GatedResult:
 
 
 def fit_gated(counts, area_eff, X, *, groups=None, total_logN=None, var_logN=None,
-              adequacy_target=None, rho_floor=DEFAULT_RHO_FLOOR, cv=5, seed=0,
+              adequacy_target=None, adequacy_n=None, adequacy_reliability=None,
+              rho_floor=DEFAULT_RHO_FLOOR, cv=5, seed=0,
               fit_kwargs=None, **dd_kwargs):
     """Fit CONIFER with the v0.3.1 adequacy gates (see module docstring).
 
@@ -124,8 +164,18 @@ def fit_gated(counts, area_eff, X, *, groups=None, total_logN=None, var_logN=Non
                         ``dict(D_ext=..., plots=..., direct_dens=...)`` to enable the
                         design-based ALR covariance and the support-aware defer gate,
                         which were previously unreachable through ``fit_gated``.
+      adequacy_n      : (m,) total reference tree count per stand (v0.3.5). Enables the
+                        errors-in-variables reliability correction: the observed contest
+                        R² is attenuated by the reference's own sampling noise, so the
+                        trust is corrected as rho = clip(rho_obs / lambda, 0, 1) with
+                        lambda from :func:`reference_reliability`. The learner CHOICE is
+                        unaffected (both learners attenuate equally).
+      adequacy_reliability : float in (0,1], overrides the internal lambda estimate
+                        (takes precedence over ``adequacy_n``). Default None: if neither
+                        is given, lambda = 1 and behaviour is identical to v0.3.4.
     ``mean_mode`` in ``dd_kwargs`` is ignored — the learner is chosen by Gate A.
-    Returns a :class:`GatedResult` (``.deployed_mode_`` gives the fitted covariate arm).
+    Returns a :class:`GatedResult` (``.deployed_mode_`` gives the fitted covariate arm;
+    ``.rho_raw`` the uncorrected trust; ``.reliability_`` the lambda applied).
     """
     from .estimators import DiameterDistribution
     counts = np.asarray(counts, float); m, K = counts.shape
@@ -136,20 +186,32 @@ def fit_gated(counts, area_eff, X, *, groups=None, total_logN=None, var_logN=Non
                       stacklevel=2)
         adequacy_target = counts
     dd_kwargs.pop("mean_mode", None)
-    learner, rho, r2_lin, r2_ml = _contest(Xs, adequacy_target, cv, seed)
+    learner, rho_raw, r2_lin, r2_ml = _contest(Xs, adequacy_target, cv, seed)
+    # --- v0.3.5 reliability correction (errors-in-variables disattenuation) ---
+    if adequacy_reliability is not None:
+        lam = float(np.clip(adequacy_reliability, 1e-3, 1.0))
+    elif adequacy_n is not None:
+        lam = reference_reliability(adequacy_target, adequacy_n)
+    else:
+        lam = 1.0
+    rho = float(np.clip(rho_raw / lam, 0.0, 1.0))
     rho_eff = rho if rho >= rho_floor else 0.0
     fkw = dict(groups=groups, total_logN=total_logN, var_logN=var_logN)
     if fit_kwargs:
         fkw.update(dict(fit_kwargs))
     est0 = DiameterDistribution(seed=seed, mean_mode="linear", **dd_kwargs).fit(counts, area_eff, np.zeros((m, 1)), **fkw)
     if rho_eff <= 0.0:
-        return GatedResult(est0.s_hat_, rho, 0.0, learner, r2_lin, r2_ml, est0, est0,
-                           deployed_mode_="linear")
+        g = GatedResult(est0.s_hat_, rho, 0.0, learner, r2_lin, r2_ml, est0, est0,
+                        deployed_mode_="linear")
+        g.rho_raw = float(rho_raw); g.reliability_ = float(lam)
+        return g
     # Deploy the SAME learner the contest used: the contest ranks ridge vs HistGradientBoosting, so when
     # it selects the flexible learner, fit the gradient-boosted mean ('bart' -> HGB) rather than the weaker
     # random-feature 'ml' model. Falls back to random features automatically if HGB is unavailable.
     _fit_mode = "bart" if learner == "ml" else learner
     estc = DiameterDistribution(seed=seed, mean_mode=_fit_mode, **dd_kwargs).fit(counts, area_eff, Xs, **fkw)
     s = rho_eff * estc.s_hat_ + (1.0 - rho_eff) * est0.s_hat_
-    return GatedResult(s, rho, rho_eff, learner, r2_lin, r2_ml, estc, est0,
-                       deployed_mode_=_fit_mode)
+    g = GatedResult(s, rho, rho_eff, learner, r2_lin, r2_ml, estc, est0,
+                    deployed_mode_=_fit_mode)
+    g.rho_raw = float(rho_raw); g.reliability_ = float(lam)
+    return g

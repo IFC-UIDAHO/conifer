@@ -76,3 +76,47 @@ def test_mean_mode_still_ignored():
                               total_logN=lN, var_logN=vN, adequacy_target=target,
                               mean_mode="lograte")
     assert g.deployed_mode_ in ("linear", "bart")
+
+
+# ---------------- v0.3.5 reliability-corrected trust ----------------
+
+def test_reliability_identity_when_absent():
+    counts, X, lN, vN, *_, target = _toy(seed=21)
+    a = conifer.fit_gated(counts, np.ones(len(counts)), X,
+                          total_logN=lN, var_logN=vN, adequacy_target=target, seed=0)
+    b = conifer.fit_gated(counts, np.ones(len(counts)), X,
+                          total_logN=lN, var_logN=vN, adequacy_target=target, seed=0,
+                          adequacy_reliability=1.0)
+    assert np.allclose(a.s_hat_, b.s_hat_)
+    assert a.reliability_ == 1.0 and abs(a.rho - a.rho_raw) < 1e-12
+
+
+def test_reference_reliability_bounds_and_monotonicity():
+    counts, X, lN, vN, *_, target = _toy(seed=22)
+    lam_small = conifer.reference_reliability(target, np.full(len(target), 5.0))
+    lam_big = conifer.reference_reliability(target, np.full(len(target), 500.0))
+    assert 0.0 < lam_small <= 1.0 and 0.0 < lam_big <= 1.0
+    assert lam_big > lam_small  # more reference trees -> more reliable target
+
+
+def test_correction_raises_rho_not_learner():
+    counts, X, lN, vN, *_, target = _toy(seed=23)
+    raw = conifer.fit_gated(counts, np.ones(len(counts)), X,
+                            total_logN=lN, var_logN=vN, adequacy_target=target, seed=0)
+    cor = conifer.fit_gated(counts, np.ones(len(counts)), X,
+                            total_logN=lN, var_logN=vN, adequacy_target=target, seed=0,
+                            adequacy_reliability=0.5)
+    assert cor.rho >= raw.rho - 1e-12          # disattenuation can only raise (until clipped)
+    assert cor.rho <= 1.0
+    assert cor.learner == raw.learner          # Gate A ranking invariant
+    assert abs(cor.rho - min(1.0, raw.rho_raw / 0.5)) < 1e-9
+
+
+def test_adequacy_n_route_runs():
+    counts, X, lN, vN, *_, target = _toy(seed=24)
+    n_ref = target.sum(1) / target.sum(1).mean() * 60.0
+    g = conifer.fit_gated(counts, np.ones(len(counts)), X,
+                          total_logN=lN, var_logN=vN, adequacy_target=target, seed=0,
+                          adequacy_n=n_ref)
+    assert 0.0 < g.reliability_ <= 1.0
+    assert g.rho >= g.rho_raw - 1e-12

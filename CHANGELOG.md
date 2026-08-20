@@ -6,6 +6,26 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-08-18
+### Added
+- `reference_reliability(adequacy_target, adequacy_n)`: multinomial-theory estimate of the
+  clr-scale reliability (lambda) of a noisy reference target.
+- `fit_gated(..., adequacy_n=...)` / `fit_gated(..., adequacy_reliability=...)`: the covariate
+  trust is now corrected for the sampling noise of the adequacy target,
+  rho = clip(rho_obs / lambda, 0, 1) — a classical errors-in-variables disattenuation. The
+  observed out-of-fold R² against a noisy reference understates the true covariate signal
+  (pilot evidence: latent R² 0.36 read as 0.17 against a 25-plot reference), which made the
+  0.30 trust floor reject covariates that were demonstrably worth using. The learner CHOICE
+  (Gate A) is unaffected: both learners attenuate equally, so the contest ranking is invariant.
+  `GatedResult` gains `.rho_raw` (uncorrected) and `.reliability_` (lambda applied).
+### Notes
+- Fully backward compatible: with neither `adequacy_n` nor `adequacy_reliability`, lambda = 1
+  and results are identical to 0.3.4 (regression-tested).
+- The rho_floor default (0.30) is unchanged and now operates on the corrected scale.
+- For cluster-sampled references (trees arriving in plots), the internal multinomial lambda
+  under-counts noise; prefer passing an empirical parallel-forms/split-half reliability via
+  `adequacy_reliability` when plot-level data allow it.
+
 ## [0.3.4] - 2026-08-18
 ### Added
 - `fit_gated(..., fit_kwargs=...)`: forwards extra keyword arguments to both underlying
