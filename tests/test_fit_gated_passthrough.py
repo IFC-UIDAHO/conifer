@@ -120,3 +120,35 @@ def test_adequacy_n_route_runs():
                           adequacy_n=n_ref)
     assert 0.0 < g.reliability_ <= 1.0
     assert g.rho >= g.rho_raw - 1e-12
+
+
+# ---------------- v0.3.6 smooth gate ramp ----------------
+
+def test_ramp_continuity_and_endpoints():
+    from conifer.adequacy import _ramp_weight
+    f, w = 0.30, 0.15
+    assert _ramp_weight(0.10, f, w) == 0.0          # junk fully rejected
+    assert _ramp_weight(0.50, f, w) == 1.0          # strong trust untouched
+    assert abs(_ramp_weight(0.30, f, w) - 0.5) < 1e-12
+    a, b = _ramp_weight(0.299, f, w), _ramp_weight(0.301, f, w)
+    assert abs(a - b) < 0.01                        # no cliff
+    xs = [i / 100 for i in range(0, 101)]
+    ws = [_ramp_weight(x, f, w) for x in xs]
+    assert all(w2 >= w1 - 1e-12 for w1, w2 in zip(ws, ws[1:]))  # monotone
+
+
+def test_ramp_zero_reproduces_hard_floor():
+    counts, X, lN, vN, *_, target = _toy(seed=31)
+    hard = conifer.fit_gated(counts, np.ones(len(counts)), X,
+                             total_logN=lN, var_logN=vN, adequacy_target=target,
+                             seed=0, rho_ramp=0.0)
+    assert hard.rho_eff in (0.0, hard.rho)          # step behaviour
+
+
+def test_ramp_partial_weight_between_bounds():
+    counts, X, lN, vN, *_, target = _toy(seed=32)
+    g = conifer.fit_gated(counts, np.ones(len(counts)), X,
+                          total_logN=lN, var_logN=vN, adequacy_target=target,
+                          seed=0, adequacy_reliability=0.5)
+    if 0.15 < g.rho < 0.45:
+        assert 0.0 < g.rho_eff < g.rho              # genuinely partial

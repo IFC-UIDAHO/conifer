@@ -149,9 +149,22 @@ class GatedResult:
         return f"GatedResult({tag}, used_covariates={self.used_covariates})"
 
 
+def _ramp_weight(rho, rho_floor, rho_ramp):
+    """v0.3.6 — smooth gate weight. Hard step (rho_ramp=0) or a linear ramp of
+    half-width rho_ramp centred on rho_floor: 0 below floor-ramp, 1 above floor+ramp.
+    Removes the knife-edge where trust epsilon-below the floor discarded covariates
+    that were demonstrably useful (pilot: rho=0.29 vs floor 0.30 cost 0.04 RMSE)."""
+    if rho_ramp <= 0.0:
+        return 1.0 if rho >= rho_floor else 0.0
+    return float(np.clip((rho - (rho_floor - rho_ramp)) / (2.0 * rho_ramp), 0.0, 1.0))
+
+
+DEFAULT_RHO_RAMP = 0.15
+
+
 def fit_gated(counts, area_eff, X, *, groups=None, total_logN=None, var_logN=None,
               adequacy_target=None, adequacy_n=None, adequacy_reliability=None,
-              rho_floor=DEFAULT_RHO_FLOOR, cv=5, seed=0,
+              rho_floor=DEFAULT_RHO_FLOOR, rho_ramp=DEFAULT_RHO_RAMP, cv=5, seed=0,
               fit_kwargs=None, **dd_kwargs):
     """Fit CONIFER with the v0.3.1 adequacy gates (see module docstring).
 
@@ -173,6 +186,10 @@ def fit_gated(counts, area_eff, X, *, groups=None, total_logN=None, var_logN=Non
       adequacy_reliability : float in (0,1], overrides the internal lambda estimate
                         (takes precedence over ``adequacy_n``). Default None: if neither
                         is given, lambda = 1 and behaviour is identical to v0.3.4.
+      rho_ramp        : half-width of the smooth gate ramp (v0.3.6, default 0.15). The
+                        covariate weight ramps linearly from 0 at ``rho_floor - rho_ramp``
+                        to full trust at ``rho_floor + rho_ramp`` (midpoint = the classic
+                        floor). ``rho_ramp=0`` restores the pre-0.3.6 hard cutoff exactly.
     ``mean_mode`` in ``dd_kwargs`` is ignored — the learner is chosen by Gate A.
     Returns a :class:`GatedResult` (``.deployed_mode_`` gives the fitted covariate arm;
     ``.rho_raw`` the uncorrected trust; ``.reliability_`` the lambda applied).
@@ -195,7 +212,7 @@ def fit_gated(counts, area_eff, X, *, groups=None, total_logN=None, var_logN=Non
     else:
         lam = 1.0
     rho = float(np.clip(rho_raw / lam, 0.0, 1.0))
-    rho_eff = rho if rho >= rho_floor else 0.0
+    rho_eff = rho * _ramp_weight(rho, rho_floor, rho_ramp)
     fkw = dict(groups=groups, total_logN=total_logN, var_logN=var_logN)
     if fit_kwargs:
         fkw.update(dict(fit_kwargs))

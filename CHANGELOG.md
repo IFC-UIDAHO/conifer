@@ -6,6 +6,17 @@ All notable changes to CONIFER are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-08-18
+### Changed
+- Gate B applies a SMOOTH ramp instead of a hard cutoff: the covariate weight rises
+  linearly from 0 at `rho_floor - rho_ramp` to full trust at `rho_floor + rho_ramp`
+  (default `rho_ramp=0.15`, midpoint = the classic 0.30 floor). Motivation (pilot,
+  v2 design study): with the hard cutoff, trust of 0.29 against a floor of 0.30
+  discarded covariates that were demonstrably worth 0.04 log-density RMSE, a
+  knife-edge a reviewer could expose with one sensitivity run. Junk covariates
+  (rho <= 0.15) are still fully rejected. `rho_ramp=0` restores the pre-0.3.6
+  hard-cutoff behaviour exactly.
+
 ## [0.3.5] - 2026-08-18
 ### Added
 - `reference_reliability(adequacy_target, adequacy_n)`: multinomial-theory estimate of the
